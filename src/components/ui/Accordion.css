@@ -1,0 +1,11 @@
+.accordion { display: flex; flex-direction: column; border: 1px solid var(--border-color); border-radius: var(--radius-lg); overflow: hidden; }
+.accordion__item { border-bottom: 1px solid var(--border-color); }
+.accordion__item:last-child { border-bottom: none; }
+.accordion__trigger { width: 100%; padding: var(--space-md) var(--space-lg); display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); background: var(--bg-surface); border: none; cursor: pointer; text-align: left; font-family: var(--font-body); color: var(--text-primary); transition: background var(--transition-fast); }
+.accordion__trigger:hover { background: var(--bg-secondary); }
+.accordion__trigger-text { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 600; flex: 1; }
+.accordion__chevron { color: var(--text-secondary); transition: transform 0.25s ease; flex-shrink: 0; }
+.accordion__chevron--open { transform: rotate(180deg); }
+.accordion__content-inner { padding: 0 var(--space-lg) var(--space-lg); color: var(--text-secondary); font-size: var(--text-sm); line-height: 1.6; }
+.accordion__item--open .accordion__trigger { color: var(--color-primary); }
+.accordion__item--open .accordion__trigger-text { color: var(--color-primary); }

@@ -1,0 +1,58 @@
+.match-badge {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.match-badge__ring {
+  display: block;
+}
+
+.match-badge__progress {
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.match-badge__text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: row;
+  gap: 0;
+}
+
+.match-badge__number {
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.match-badge__symbol {
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+/* Size variants */
+.match-badge--sm .match-badge__number {
+  font-size: 0.7rem;
+}
+.match-badge--sm .match-badge__symbol {
+  font-size: 0.5rem;
+}
+
+.match-badge--md .match-badge__number {
+  font-size: 1rem;
+}
+.match-badge--md .match-badge__symbol {
+  font-size: 0.65rem;
+}
+
+.match-badge--lg .match-badge__number {
+  font-size: 1.5rem;
+}
+.match-badge--lg .match-badge__symbol {
+  font-size: 0.85rem;
+}
