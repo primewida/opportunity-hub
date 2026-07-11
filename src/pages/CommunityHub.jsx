@@ -1,0 +1,176 @@
+import { useState } from 'react';
+import { TabBar, Card, Button, Modal } from '../components/ui';
+import { COMMUNITY_GROUPS, COMMUNITY_POSTS } from '../data/mockData';
+import { getRelativeTime } from '../utils/helpers';
+import { ThumbsUp, ThumbsDown, MessageSquare, Share2, Plus, Users, ChevronDown, ChevronUp, Send } from 'lucide-react';
+import './CommunityHub.css';
+
+export default function CommunityHub() {
+  const [activeTab, setActiveTab] = useState(0);
+  const [showNewPost, setShowNewPost] = useState(false);
+  const [newPostText, setNewPostText] = useState('');
+  const [expandedPost, setExpandedPost] = useState(null);
+  const [votes, setVotes] = useState({});
+
+  const tabs = [
+    { label: 'Feed', icon: MessageSquare },
+    { label: 'My Groups', icon: Users },
+    { label: 'Trending', icon: ThumbsUp },
+  ];
+
+  const joinedGroups = COMMUNITY_GROUPS?.filter(g => g.joined) || COMMUNITY_GROUPS?.slice(0, 3) || [];
+  const otherGroups = COMMUNITY_GROUPS?.filter(g => !g.joined) || COMMUNITY_GROUPS?.slice(3) || [];
+  const trendingPosts = [...(COMMUNITY_POSTS || [])].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
+
+  const handleVote = (postId, type) => {
+    setVotes(v => {
+      const current = v[postId];
+      if (current === type) return { ...v, [postId]: null };
+      return { ...v, [postId]: type };
+    });
+  };
+
+  const renderPost = (post) => (
+    <Card key={post.id} variant="elevated" className="community__post">
+      <div className="card-body">
+        <div className="community__post-header">
+          <div className="community__avatar">{post.author?.initials || post.author?.name?.slice(0, 2).toUpperCase() || '??'}</div>
+          <div className="community__post-author-info">
+            <span className="community__author-name">{post.author?.name || 'Anonymous'}</span>
+            <span className="community__post-time">{post.author?.title || ''} · {getRelativeTime(post.createdAt || post.timestamp || '2026-06-28')}</span>
+          </div>
+        </div>
+        <p className="community__post-text">{post.content}</p>
+        {post.tags && (
+          <div className="community__post-tags">
+            {post.tags.map(t => <span key={t} className="community__tag">#{t}</span>)}
+          </div>
+        )}
+        <div className="community__post-actions">
+          <button className={`community__vote-btn ${votes[post.id] === 'up' ? 'community__vote-btn--active-up' : ''}`}
+            onClick={() => handleVote(post.id, 'up')}>
+            <ThumbsUp size={16} /> <span>{(post.upvotes || 0) + (votes[post.id] === 'up' ? 1 : 0)}</span>
+          </button>
+          <button className={`community__vote-btn ${votes[post.id] === 'down' ? 'community__vote-btn--active-down' : ''}`}
+            onClick={() => handleVote(post.id, 'down')}>
+            <ThumbsDown size={16} /> <span>{post.downvotes || 0}</span>
+          </button>
+          <button className="community__action-btn" onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}>
+            <MessageSquare size={16} /> <span>{post.commentCount || post.comments?.length || 0}</span>
+            {expandedPost === post.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          <button className="community__action-btn"><Share2 size={16} /></button>
+        </div>
+        {expandedPost === post.id && (
+          <div className="community__comments animate-fadeInUp">
+            {(post.comments || []).length > 0 ? post.comments.map((c, i) => (
+              <div key={i} className="community__comment">
+                <div className="community__comment-avatar">{c.author?.initials || 'U'}</div>
+                <div className="community__comment-body">
+                  <span className="community__comment-name">{c.author?.name || 'User'}</span>
+                  <p className="community__comment-text">{c.content}</p>
+                </div>
+              </div>
+            )) : <p className="community__no-comments">No comments yet. Be the first to share your thoughts!</p>}
+            <div className="community__comment-input">
+              <input className="input" placeholder="Write a comment..." />
+              <button className="community__send-btn"><Send size={16} /></button>
+            </div>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+
+  return (
+    <div className="community">
+      <div className="community__header">
+        <h1 className="community__title">Community Hub</h1>
+        <p className="community__subtitle">Connect, share experiences, and learn from fellow Nigerian students</p>
+      </div>
+
+      <TabBar tabs={tabs} activeIndex={activeTab} onChange={setActiveTab} />
+
+      {activeTab === 0 && (
+        <div className="community__content">
+          {joinedGroups.length > 0 && (
+            <div className="community__groups-section">
+              <h3 className="community__section-title">Your Groups</h3>
+              <div className="community__groups-scroll">
+                {joinedGroups.map(g => (
+                  <div key={g.id} className="community__group-chip">
+                    <span className="community__group-icon">{g.icon || '👥'}</span>
+                    <span className="community__group-name">{g.name}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="community__feed">
+            {(COMMUNITY_POSTS || []).map(post => renderPost(post))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 1 && (
+        <div className="community__content">
+          <h3 className="community__section-title">Joined Groups</h3>
+          <div className="community__groups-grid">
+            {joinedGroups.map(g => (
+              <Card key={g.id} variant="interactive">
+                <div className="card-body community__group-card">
+                  <span className="community__group-card-icon">{g.icon || '👥'}</span>
+                  <h4 className="community__group-card-name">{g.name}</h4>
+                  <span className="community__group-card-members"><Users size={14} /> {g.memberCount || g.members || 0} members</span>
+                  <Button variant="outline" size="sm" fullWidth>View Group</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+          <h3 className="community__section-title" style={{ marginTop: 'var(--space-xl)' }}>Discover Groups</h3>
+          <div className="community__groups-grid">
+            {otherGroups.map(g => (
+              <Card key={g.id} variant="interactive">
+                <div className="card-body community__group-card">
+                  <span className="community__group-card-icon">{g.icon || '🌍'}</span>
+                  <h4 className="community__group-card-name">{g.name}</h4>
+                  <span className="community__group-card-members"><Users size={14} /> {g.memberCount || g.members || 0} members</span>
+                  <Button variant="primary" size="sm" fullWidth>Join Group</Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 2 && (
+        <div className="community__content">
+          <h3 className="community__section-title">🔥 Trending Discussions</h3>
+          <div className="community__feed">
+            {trendingPosts.map(post => renderPost(post))}
+          </div>
+        </div>
+      )}
+
+      {/* Floating New Post Button */}
+      <button className="community__fab" onClick={() => setShowNewPost(true)} aria-label="New Post">
+        <Plus size={24} />
+      </button>
+
+      {/* New Post Modal */}
+      <Modal isOpen={showNewPost} onClose={() => setShowNewPost(false)} title="Create a Post">
+        <div className="community__new-post">
+          <textarea className="input community__new-post-textarea" rows={5}
+            placeholder="Share an experience, ask a question, or give advice to fellow students..." 
+            value={newPostText} onChange={e => setNewPostText(e.target.value)} />
+          <div className="community__new-post-actions">
+            <span className="community__new-post-count">{newPostText.length}/500</span>
+            <Button variant="primary" disabled={!newPostText.trim()} onClick={() => { setNewPostText(''); setShowNewPost(false); }}>
+              Post
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
