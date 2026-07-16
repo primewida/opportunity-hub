@@ -1,128 +1,91 @@
-.top-bar {
-  position: fixed;
+/* TopAppBar — Frosted Translucent */
+.top-app-bar {
+  position: sticky;
   top: 0;
-  left: 0;
-  right: 0;
-  height: var(--nav-height);
-  background: var(--bg-surface);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 var(--space-lg);
-  z-index: 99;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* On desktop, offset for side drawer */
-@media (min-width: 1025px) {
-  .top-bar {
-    left: var(--side-drawer-width);
-  }
-
-  .layout--collapsed .top-bar {
-    left: var(--side-drawer-collapsed);
-  }
-}
-
-.top-bar__left {
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: var(--space-md);
+  padding: var(--space-sm) var(--space-lg);
+  height: var(--nav-height);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(var(--glass-blur)) var(--glass-saturate);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) var(--glass-saturate);
+  border-bottom: 0.5px solid var(--separator);
+  transition: all var(--transition-normal);
 }
 
-.top-bar__menu-btn {
+.top-app-bar__title {
+  flex: 1;
+  font-family: var(--font-heading);
+  font-size: var(--text-body);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-app-bar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+
+.top-app-bar__btn {
   width: 36px;
   height: 36px;
-  border: none;
-  background: none;
-  color: var(--text-primary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-sm);
-  transition: background var(--transition-fast);
-}
-
-.top-bar__menu-btn:hover {
-  background: var(--bg-secondary);
-}
-
-.top-bar__title {
-  font-family: var(--font-heading);
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.top-bar__right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-xs);
-}
-
-.top-bar__action {
-  width: 40px;
-  height: 40px;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
   transition: all var(--transition-fast);
   position: relative;
 }
 
-.top-bar__action:hover {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
+.top-app-bar__btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+[data-theme='dark'] .top-app-bar__btn:hover {
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.top-bar__streak {
+.top-app-bar__btn:active {
+  transform: scale(0.9);
+  transition: transform 80ms ease;
+}
+
+.top-app-bar__streak {
+  display: flex;
+  align-items: center;
   gap: 4px;
-  width: auto;
-  padding: 6px 12px;
+  padding: 6px 14px;
+  background: rgba(255, 159, 10, 0.1);
   border-radius: var(--radius-full);
-  background: rgba(253, 203, 110, 0.1);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: #C93400;
 }
+[data-theme='dark'] .top-app-bar__streak { color: var(--color-warning); }
 
-.top-bar__streak-count {
-  font-family: var(--font-accent);
-  font-weight: 700;
-  font-size: var(--text-sm);
-  color: var(--color-accent-amber);
-}
-
-.top-bar__badge {
+.top-app-bar__badge {
   position: absolute;
   top: 4px;
   right: 4px;
-  min-width: 18px;
-  height: 18px;
-  border-radius: var(--radius-full);
-  background: var(--color-secondary);
-  color: white;
-  font-size: 10px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0 4px;
-  animation: scaleIn 0.3s ease;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-error);
+  border: 2px solid var(--bg-surface);
 }
 
-@media (max-width: 480px) {
-  .top-bar {
-    padding: 0 var(--space-md);
-  }
-
-  .top-bar__title {
-    font-size: var(--text-base);
+@media (max-width: 1024px) {
+  .top-app-bar {
+    padding: var(--space-sm) var(--space-md);
   }
 }

@@ -1,21 +1,24 @@
-.profile { display: flex; flex-direction: column; gap: var(--space-lg); }
+/* Profile — Apple Settings */
+.profile { display: flex; flex-direction: column; gap: var(--space-xl); }
 .profile__hero { display: flex; align-items: center; gap: var(--space-lg); }
 @media (max-width: 480px) { .profile__hero { flex-direction: column; text-align: center; } }
 .profile__hero-info { flex: 1; }
-.profile__name { font-family: var(--font-heading); font-size: 1.3rem; font-weight: 700; color: var(--text-primary); margin: 0 0 4px; }
-.profile__email { font-size: var(--text-sm); color: var(--text-secondary); margin: 0 0 var(--space-xs); }
-.profile__section-title { font-family: var(--font-heading); font-size: var(--text-base); font-weight: 600; color: var(--text-primary); margin: 0 0 var(--space-md); }
-.profile__fields { display: flex; flex-direction: column; gap: var(--space-md); }
-.profile__field { display: flex; align-items: center; gap: var(--space-md); }
+.profile__name { font-family: var(--font-heading); font-size: var(--text-title2); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0 0 4px; }
+.profile__email { font-size: var(--text-subhead); color: var(--text-secondary); margin: 0 0 var(--space-xs); }
+.profile__section-title { font-family: var(--font-heading); font-size: var(--text-footnote); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); margin: 0 0 var(--space-sm); padding-left: var(--space-md); }
+.profile__fields { display: flex; flex-direction: column; }
+.profile__field { display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg); }
+.profile__field + .profile__field { border-top: 0.5px solid var(--separator); }
 .profile__field-info { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.profile__field-label { font-family: var(--font-accent); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); }
-.profile__field-value { font-size: var(--text-sm); color: var(--text-primary); }
-.profile__field-input { font-size: var(--text-sm); padding: 6px 10px; }
-.profile__setting { width: 100%; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) 0; border: none; background: none; cursor: pointer; color: var(--text-primary); font-family: var(--font-body); font-size: var(--text-sm); text-align: left; border-bottom: 1px solid var(--border-color); transition: color var(--transition-fast); }
-.profile__setting:last-child { border-bottom: none; }
-.profile__setting:hover { color: var(--color-primary); }
+.profile__field-label { font-size: var(--text-caption); font-weight: 500; color: var(--text-tertiary); }
+.profile__field-value { font-size: var(--text-body); color: var(--text-primary); }
+.profile__field-input { font-size: var(--text-body); padding: 8px 12px; border-radius: var(--radius-sm); background: var(--bg-secondary); border: 1.5px solid transparent; }
+.profile__field-input:focus { border-color: var(--color-primary); background: var(--bg-surface); }
+.profile__setting { width: 100%; display: flex; align-items: center; gap: var(--space-md); padding: var(--space-md) var(--space-lg); border: none; background: transparent; cursor: pointer; color: var(--text-primary); font-family: var(--font-body); font-size: var(--text-body); text-align: left; transition: background var(--transition-fast); }
+.profile__setting + .profile__setting { border-top: 0.5px solid var(--separator); }
+.profile__setting:hover { background: rgba(111,181,217,0.04); }
+.profile__setting:active { background: rgba(0,0,0,0.04); }
 .profile__setting--danger { color: var(--color-error); }
-.profile__setting--danger:hover { color: var(--color-error); }
 .profile__setting-label { flex: 1; }
-.profile__setting-value { font-size: var(--text-xs); color: var(--text-secondary); font-family: var(--font-accent); }
-.profile__setting-chevron { color: var(--text-secondary); }
+.profile__setting-value { font-size: var(--text-subhead); color: var(--text-tertiary); }
+.profile__setting-chevron { color: var(--text-tertiary); }

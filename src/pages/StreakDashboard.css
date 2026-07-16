@@ -1,38 +1,39 @@
-.streak { display: flex; flex-direction: column; gap: var(--space-xl); }
+/* StreakDashboard — Apple Fitness */
+.streak { display: flex; flex-direction: column; gap: var(--space-2xl); }
 .streak__hero { text-align: center; padding: var(--space-xl) 0; }
 .streak__flame-container { position: relative; display: inline-flex; align-items: center; justify-content: center; margin-bottom: var(--space-md); }
-.streak__flame-icon { color: var(--color-accent-amber); animation: pulse 2s ease infinite; filter: drop-shadow(0 0 12px rgba(253,203,110,0.5)); }
-.streak__count { position: absolute; font-family: var(--font-heading); font-size: 1.2rem; font-weight: 800; color: var(--text-primary); top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: 4px; }
-.streak__hero-title { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-xs); }
-.streak__hero-text { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
+.streak__flame-icon { color: var(--color-warning); animation: gentleBob 3s ease infinite; filter: drop-shadow(0 4px 12px rgba(255,159,10,0.25)); }
+.streak__count { position: absolute; font-family: var(--font-heading); font-size: var(--text-title3); font-weight: 800; color: var(--text-primary); top: 50%; left: 50%; transform: translate(-50%, -50%); margin-top: 4px; }
+.streak__hero-title { font-family: var(--font-heading); font-size: var(--text-title1); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0 0 var(--space-2xs); }
+.streak__hero-text { color: var(--text-secondary); font-size: var(--text-subhead); margin: 0; }
 .streak__stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-md); }
 @media (max-width: 640px) { .streak__stats { grid-template-columns: repeat(2, 1fr); } }
-.streak__stat-card { background: var(--bg-surface); border-radius: var(--radius-md); padding: var(--space-md); display: flex; flex-direction: column; gap: var(--space-xs); border: 1px solid var(--border-color); border-top: 3px solid; box-shadow: var(--shadow-sm); text-align: center; align-items: center; }
-.streak__stat-value { font-family: var(--font-heading); font-size: 1.2rem; font-weight: 700; color: var(--text-primary); }
-.streak__stat-label { font-size: var(--text-xs); color: var(--text-secondary); font-family: var(--font-accent); }
+.streak__stat-card { background: var(--bg-surface); border-radius: var(--radius-lg); padding: var(--space-lg); display: flex; flex-direction: column; gap: var(--space-xs); box-shadow: var(--shadow-xs); text-align: center; align-items: center; transition: all var(--transition-normal); }
+.streak__stat-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+.streak__stat-value { font-family: var(--font-heading); font-size: var(--text-title2); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); }
+.streak__stat-label { font-size: var(--text-caption); color: var(--text-secondary); }
 .streak__section { display: flex; flex-direction: column; gap: var(--space-md); }
-.streak__section-title { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 600; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm); }
-/* Heatmap */
+.streak__section-title { font-family: var(--font-heading); font-size: var(--text-title3); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0; display: flex; align-items: center; gap: var(--space-sm); }
 .streak__heatmap { display: flex; gap: 3px; overflow-x: auto; padding: var(--space-sm) 0; }
 .streak__heatmap-col { display: flex; flex-direction: column; gap: 3px; }
-.streak__heatmap-cell { width: 14px; height: 14px; border-radius: 3px; }
+.streak__heatmap-cell { width: 14px; height: 14px; border-radius: 4px; transition: opacity var(--transition-fast); }
+.streak__heatmap-cell:hover { opacity: 0.7; }
 .streak__heatmap-labels { display: none; }
-.streak__heatmap-legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; font-size: 11px; color: var(--text-secondary); margin-top: var(--space-sm); }
+.streak__heatmap-legend { display: flex; align-items: center; gap: 4px; justify-content: flex-end; font-size: var(--text-caption2); color: var(--text-tertiary); margin-top: var(--space-sm); }
 .streak__heatmap-legend .streak__heatmap-cell { width: 12px; height: 12px; }
-/* Goal */
 .streak__goal-time, .streak__goal-days { margin-bottom: var(--space-lg); }
-.streak__goal-label { font-family: var(--font-accent); font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-secondary); display: block; margin-bottom: var(--space-sm); }
+.streak__goal-label { font-size: var(--text-caption); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-tertiary); display: block; margin-bottom: var(--space-sm); }
 .streak__goal-slider-row { display: flex; align-items: center; gap: var(--space-md); margin-bottom: var(--space-sm); }
-.streak__slider { flex: 1; height: 6px; -webkit-appearance: none; appearance: none; background: var(--bg-secondary); border-radius: var(--radius-full); outline: none; }
-.streak__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--color-accent-amber); cursor: pointer; box-shadow: 0 2px 6px rgba(253,203,110,0.4); }
-.streak__goal-value { font-family: var(--font-heading); font-weight: 700; color: var(--color-accent-amber); min-width: 60px; text-align: center; }
+.streak__slider { flex: 1; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-secondary); border-radius: var(--radius-full); outline: none; }
+.streak__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); cursor: pointer; box-shadow: 0 2px 8px rgba(111,181,217,0.3); }
+.streak__goal-value { font-family: var(--font-heading); font-weight: 700; color: var(--color-primary); min-width: 60px; text-align: center; }
 .streak__day-buttons { display: flex; gap: var(--space-xs); flex-wrap: wrap; }
-.streak__day-btn { padding: 8px 14px; border: 2px solid var(--border-color); border-radius: var(--radius-full); background: none; color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; font-family: var(--font-accent); cursor: pointer; transition: all var(--transition-fast); }
-.streak__day-btn--active { border-color: var(--color-accent-amber); background: rgba(253,203,110,0.1); color: var(--color-accent-amber); }
-/* Week progress */
+.streak__day-btn { padding: 10px 16px; border: 1.5px solid var(--border-color); border-radius: var(--radius-full); background: var(--bg-surface); color: var(--text-secondary); font-size: var(--text-footnote); font-weight: 600; cursor: pointer; transition: all var(--transition-fast); }
+.streak__day-btn:active { transform: scale(0.92); }
+.streak__day-btn--active { border-color: var(--color-primary); background: rgba(111,181,217,0.1); color: var(--color-primary-dark); }
 .streak__week-progress { display: flex; justify-content: space-between; gap: var(--space-sm); }
 .streak__week-day { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
-.streak__week-circle { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: var(--text-sm); color: var(--text-secondary); transition: all var(--transition-fast); }
+.streak__week-circle { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--border-color); display: flex; align-items: center; justify-content: center; font-size: var(--text-footnote); color: var(--text-tertiary); transition: all var(--transition-fast); }
 .streak__week-day.done .streak__week-circle { border-color: var(--color-success); background: var(--color-success); color: white; }
-.streak__week-day.today .streak__week-circle { border-color: var(--color-accent-amber); color: var(--color-accent-amber); box-shadow: 0 0 0 4px rgba(253,203,110,0.15); }
-.streak__week-label { font-size: 11px; color: var(--text-secondary); font-family: var(--font-accent); font-weight: 500; }
+.streak__week-day.today .streak__week-circle { border-color: var(--color-primary); color: var(--color-primary); box-shadow: 0 0 0 4px rgba(111,181,217,0.12); }
+.streak__week-label { font-size: var(--text-caption2); color: var(--text-tertiary); font-weight: 500; }

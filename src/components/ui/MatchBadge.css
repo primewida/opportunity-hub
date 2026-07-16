@@ -1,58 +1,46 @@
+/* MatchBadge — Soft Ring */
 .match-badge {
-  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
+  position: relative;
 }
 
 .match-badge__ring {
-  display: block;
+  transform: rotate(-90deg);
 }
 
-.match-badge__progress {
-  transition: stroke-dashoffset 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+.match-badge__track {
+  fill: none;
+  stroke: rgba(0,0,0,0.05);
+  stroke-width: 4;
+}
+[data-theme='dark'] .match-badge__track { stroke: rgba(255,255,255,0.08); }
+
+.match-badge__fill {
+  fill: none;
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.8s var(--ease-smooth);
 }
 
-.match-badge__text {
+.match-badge__fill--high { stroke: var(--color-success); }
+.match-badge__fill--medium { stroke: var(--color-primary); }
+.match-badge__fill--low { stroke: var(--color-warning); }
+
+.match-badge__value {
   position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: row;
-  gap: 0;
-}
-
-.match-badge__number {
+  font-family: var(--font-heading);
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
-  line-height: 1;
 }
 
-.match-badge__symbol {
-  color: var(--text-secondary);
-  line-height: 1;
-}
+.match-badge--sm { width: 40px; height: 40px; }
+.match-badge--sm .match-badge__value { font-size: var(--text-caption2); }
 
-/* Size variants */
-.match-badge--sm .match-badge__number {
-  font-size: 0.7rem;
-}
-.match-badge--sm .match-badge__symbol {
-  font-size: 0.5rem;
-}
+.match-badge--md { width: 56px; height: 56px; }
+.match-badge--md .match-badge__value { font-size: var(--text-footnote); }
 
-.match-badge--md .match-badge__number {
-  font-size: 1rem;
-}
-.match-badge--md .match-badge__symbol {
-  font-size: 0.65rem;
-}
-
-.match-badge--lg .match-badge__number {
-  font-size: 1.5rem;
-}
-.match-badge--lg .match-badge__symbol {
-  font-size: 0.85rem;
-}
+.match-badge--lg { width: 80px; height: 80px; }
+.match-badge--lg .match-badge__value { font-size: var(--text-body); }

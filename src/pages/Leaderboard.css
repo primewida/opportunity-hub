@@ -1,26 +1,27 @@
-.leaderboard { display: flex; flex-direction: column; gap: var(--space-lg); }
+/* Leaderboard — Apple */
+.leaderboard { display: flex; flex-direction: column; gap: var(--space-xl); }
 .leaderboard__header { text-align: center; }
-.leaderboard__title { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-xs); }
-.leaderboard__subtitle { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
-.leaderboard__podium { display: flex; align-items: flex-end; justify-content: center; gap: var(--space-md); padding: var(--space-xl) 0; }
+.leaderboard__title { font-family: var(--font-heading); font-size: var(--text-title1); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0 0 var(--space-2xs); }
+.leaderboard__subtitle { color: var(--text-secondary); font-size: var(--text-subhead); margin: 0; }
+.leaderboard__podium { display: flex; align-items: flex-end; justify-content: center; gap: var(--space-lg); padding: var(--space-xl) 0; }
 .leaderboard__podium-item { display: flex; flex-direction: column; align-items: center; gap: var(--space-xs); }
 .leaderboard__podium-avatar { position: relative; }
 .leaderboard__medal { position: absolute; bottom: -4px; right: -4px; }
-.leaderboard__podium-name { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); }
-.leaderboard__podium-score { font-family: var(--font-accent); font-size: var(--text-xs); color: var(--text-secondary); }
+.leaderboard__podium-name { font-family: var(--font-heading); font-size: var(--text-footnote); font-weight: 600; color: var(--text-primary); }
+.leaderboard__podium-score { font-size: var(--text-caption); color: var(--text-secondary); }
 .leaderboard__podium-bar { width: 80px; border-radius: var(--radius-md) var(--radius-md) 0 0; }
-.leaderboard__podium-bar--1 { height: 100px; background: linear-gradient(to top, rgba(253,203,110,0.3), var(--color-accent-amber)); }
-.leaderboard__podium-bar--2 { height: 72px; background: linear-gradient(to top, rgba(192,192,192,0.2), #C0C0C0); }
-.leaderboard__podium-bar--3 { height: 56px; background: linear-gradient(to top, rgba(205,127,50,0.2), #CD7F32); }
+.leaderboard__podium-bar--1 { height: 100px; background: linear-gradient(to top, rgba(255,159,10,0.15), rgba(255,159,10,0.6)); }
+.leaderboard__podium-bar--2 { height: 72px; background: linear-gradient(to top, rgba(142,142,147,0.1), rgba(142,142,147,0.4)); }
+.leaderboard__podium-bar--3 { height: 56px; background: linear-gradient(to top, rgba(205,127,50,0.1), rgba(205,127,50,0.4)); }
 @media (max-width: 480px) { .leaderboard__podium-bar { width: 60px; } }
-.leaderboard__list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.leaderboard__list { display: flex; flex-direction: column; gap: var(--space-xs); }
 .leaderboard__row { display: flex; align-items: center; gap: var(--space-md); }
-.leaderboard__rank { font-family: var(--font-heading); font-size: var(--text-base); font-weight: 700; color: var(--text-secondary); min-width: 32px; text-align: center; }
+.leaderboard__rank { font-family: var(--font-heading); font-size: var(--text-body); font-weight: 700; color: var(--text-tertiary); min-width: 32px; text-align: center; }
 .leaderboard__info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.leaderboard__name { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-xs); }
-.leaderboard__you-badge { font-size: 10px; padding: 2px 8px; background: var(--color-primary); color: white; border-radius: var(--radius-full); font-family: var(--font-accent); font-weight: 600; }
-.leaderboard__school { font-size: var(--text-xs); color: var(--text-secondary); }
+.leaderboard__name { font-family: var(--font-heading); font-size: var(--text-subhead); font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: var(--space-xs); }
+.leaderboard__you-badge { font-size: var(--text-caption2); padding: 2px 10px; background: var(--color-primary); color: white; border-radius: var(--radius-full); font-weight: 600; }
+.leaderboard__school { font-size: var(--text-caption); color: var(--text-secondary); }
 .leaderboard__score-col { text-align: right; display: flex; flex-direction: column; gap: 2px; }
-.leaderboard__score { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 700; color: var(--text-primary); }
-.leaderboard__streak-mini { font-size: 11px; color: var(--color-accent-amber); }
-.leaderboard__you { border: 2px solid var(--color-primary) !important; background: rgba(108,92,231,0.04) !important; }
+.leaderboard__score { font-family: var(--font-heading); font-size: var(--text-subhead); font-weight: 700; color: var(--text-primary); }
+.leaderboard__streak-mini { font-size: var(--text-caption2); color: var(--color-warning); }
+.leaderboard__you { border: 1.5px solid var(--color-primary) !important; background: rgba(111,181,217,0.04) !important; }

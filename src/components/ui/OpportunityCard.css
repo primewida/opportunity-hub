@@ -1,104 +1,116 @@
-.opportunity-card {
-  display: grid;
-  grid-template-columns: 44px 1fr auto;
-  grid-template-rows: 1fr auto;
-  gap: 0 var(--spacing-3);
-  padding: var(--spacing-4);
+/* OpportunityCard — Floating Premium */
+.opp-card {
+  background: var(--bg-surface);
+  border-radius: var(--radius-lg);
+  border: none;
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
   cursor: pointer;
+  transition: all 0.35s var(--ease-smooth);
+  position: relative;
 }
 
-.opportunity-card--compact {
-  grid-template-columns: 36px 1fr auto;
-  padding: var(--spacing-3);
+.opp-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
 }
 
-.opportunity-card__logo {
-  grid-row: 1;
+.opp-card:active {
+  transform: scale(0.98);
+  transition: transform 100ms ease;
+}
+
+.opp-card__body {
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.opp-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+}
+
+.opp-card__logo {
   width: 44px;
   height: 44px;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--gradient-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #fff;
+  font-family: var(--font-heading);
   font-weight: 700;
-  font-size: 1.125rem;
+  font-size: var(--text-body);
+  color: var(--color-primary);
   flex-shrink: 0;
+  border: 1px solid var(--border-color);
 }
 
-.opportunity-card--compact .opportunity-card__logo {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  font-size: 0.95rem;
-}
-
-.opportunity-card__content {
-  grid-column: 2;
-  grid-row: 1;
+.opp-card__info {
+  flex: 1;
   min-width: 0;
 }
 
-.opportunity-card__title {
-  font-size: 0.95rem;
+.opp-card__title {
+  font-family: var(--font-heading);
+  font-size: var(--text-subhead);
   font-weight: 600;
-  line-height: 1.35;
-  margin-bottom: 2px;
   color: var(--text-primary);
+  margin: 0;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
 }
 
-.opportunity-card__org {
-  font-size: 0.82rem;
-  margin-bottom: var(--spacing-2);
-}
-
-.opportunity-card__tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-1);
-  margin-top: var(--spacing-1);
-}
-
-.opportunity-card__match {
-  grid-column: 3;
-  grid-row: 1;
-  display: flex;
-  align-items: flex-start;
-  padding-top: 2px;
-}
-
-.opportunity-card__footer {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-top: var(--spacing-3);
-  padding-top: var(--spacing-3);
-  border-top: 1px solid var(--border-color);
-}
-
-.opportunity-card__deadline {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-1);
-  font-size: 0.8rem;
-  font-weight: 500;
-}
-
-.opportunity-card__bookmark {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: var(--spacing-1);
-  border-radius: var(--radius-sm);
+.opp-card__org {
+  font-size: var(--text-caption);
   color: var(--text-secondary);
+  margin: 2px 0 0;
+}
+
+.opp-card__bookmark {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s, background 0.2s;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+.opp-card__bookmark:hover { color: var(--color-primary); background: rgba(111,181,217,0.08); }
+.opp-card__bookmark--saved { color: var(--color-primary); }
+
+.opp-card__tags {
+  display: flex;
+  gap: var(--space-xs);
+  flex-wrap: wrap;
 }
 
-.opportunity-card__bookmark:hover {
-  color: var(--color-primary);
-  background: var(--bg-hover);
+.opp-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-sm);
+  border-top: 0.5px solid var(--separator);
+  margin-top: var(--space-2xs);
+}
+
+.opp-card__deadline {
+  font-size: var(--text-caption);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.opp-card__match {
+  font-size: var(--text-caption);
+  font-weight: 600;
 }

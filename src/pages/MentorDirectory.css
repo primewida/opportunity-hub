@@ -1,11 +1,12 @@
-.mentors { display: flex; flex-direction: column; gap: var(--space-md); }
-.mentors__header { margin-bottom: var(--space-xs); }
-.mentors__title { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-xs); }
-.mentors__subtitle { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
-.mentors__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-md); }
-.mentors__card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-sm); }
-.mentors__name { font-family: var(--font-heading); font-size: var(--text-base); font-weight: 600; color: var(--text-primary); margin: 0; }
-.mentors__role { font-size: var(--text-xs); color: var(--text-secondary); margin: 0; }
-.mentors__meta { display: flex; gap: var(--space-md); font-size: 11px; color: var(--text-secondary); }
+/* MentorDirectory — Apple */
+.mentors { display: flex; flex-direction: column; gap: var(--space-lg); }
+.mentors__header { padding: var(--space-xs) 0; }
+.mentors__title { font-family: var(--font-heading); font-size: var(--text-title1); font-weight: 700; letter-spacing: -0.02em; color: var(--text-primary); margin: 0 0 var(--space-2xs); }
+.mentors__subtitle { font-size: var(--text-subhead); color: var(--text-secondary); margin: 0; }
+.mentors__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-md); }
+.mentors__card { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-sm); padding: var(--space-xl) var(--space-lg); }
+.mentors__name { font-family: var(--font-heading); font-size: var(--text-body); font-weight: 600; letter-spacing: -0.01em; color: var(--text-primary); margin: 0; }
+.mentors__role { font-size: var(--text-caption); color: var(--text-secondary); margin: 0; }
+.mentors__meta { display: flex; gap: var(--space-md); font-size: var(--text-caption2); color: var(--text-tertiary); }
 .mentors__meta span { display: flex; align-items: center; gap: 4px; }
 .mentors__tags { display: flex; gap: var(--space-xs); flex-wrap: wrap; justify-content: center; }
