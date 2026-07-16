@@ -1,0 +1,15 @@
+.jobs { display: flex; flex-direction: column; gap: var(--space-md); }
+.jobs__header { margin-bottom: var(--space-xs); }
+.jobs__title { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 700; color: var(--text-primary); margin: 0 0 var(--space-xs); }
+.jobs__subtitle { color: var(--text-secondary); font-size: var(--text-sm); margin: 0; }
+.jobs__count { font-family: var(--font-accent); font-size: var(--text-xs); color: var(--text-secondary); margin: 0; }
+.jobs__list { display: flex; flex-direction: column; gap: var(--space-md); }
+.jobs__card { display: flex; align-items: center; gap: var(--space-md); }
+.jobs__card-logo { width: 48px; height: 48px; border-radius: var(--radius-md); background: var(--gradient-primary); color: white; display: flex; align-items: center; justify-content: center; font-family: var(--font-heading); font-size: 1.2rem; font-weight: 700; flex-shrink: 0; }
+.jobs__card-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.jobs__card-title { font-family: var(--font-heading); font-size: var(--text-sm); font-weight: 600; color: var(--text-primary); margin: 0; }
+.jobs__card-company { font-size: var(--text-xs); color: var(--text-secondary); margin: 0; }
+.jobs__card-meta { display: flex; gap: var(--space-md); flex-wrap: wrap; font-size: 11px; color: var(--text-secondary); }
+.jobs__card-meta span { display: flex; align-items: center; gap: 3px; }
+.jobs__card-tags { display: flex; gap: var(--space-xs); flex-wrap: wrap; margin-top: 4px; }
+@media (max-width: 640px) { .jobs__card { flex-direction: column; align-items: flex-start; } .jobs__card .btn { width: 100%; } }

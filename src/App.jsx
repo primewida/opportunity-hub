@@ -24,30 +24,19 @@ import TestPrep from './pages/TestPrep';
 import ReviewSystem from './pages/ReviewSystem';
 import CommunityHub from './pages/CommunityHub';
 
-/* ── Placeholder pages for Phase 3 navigation ── */
-function PlaceholderPage({ title, emoji, desc }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', textAlign: 'center', gap: 'var(--space-md)', padding: 'var(--space-xl)' }}>
-      <span style={{ fontSize: 56 }}>{emoji}</span>
-      <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.5rem', margin: 0, color: 'var(--text-primary)' }}>{title}</h1>
-      <p style={{ color: 'var(--text-secondary)', maxWidth: 400, margin: 0 }}>{desc}</p>
-      <span className="badge badge-primary" style={{ fontFamily: 'var(--font-accent)' }}>Coming in Phase 3</span>
-    </div>
-  );
-}
-
-const Profile = () => <PlaceholderPage title="Your Profile" emoji="👤" desc="View and edit your profile, manage settings, and customize your experience." />;
-const Jobs = () => <PlaceholderPage title="Job Board" emoji="💼" desc="Find jobs, internships, and NYSC placements from top Nigerian companies." />;
-const Applications = () => <PlaceholderPage title="Application Tracker" emoji="📋" desc="Track your scholarship and job applications with a Kanban-style board." />;
-const Messages = () => <PlaceholderPage title="Messages" emoji="💬" desc="Chat with mentors, peers, and community members." />;
-const Settings = () => <PlaceholderPage title="Settings" emoji="⚙️" desc="Manage your account, notifications, theme, and privacy preferences." />;
-const Streak = () => <PlaceholderPage title="Streak Dashboard" emoji="🔥" desc="Track your self-paced learning streaks and celebrate your consistency." />;
-const Notifications = () => <PlaceholderPage title="Notifications" emoji="🔔" desc="Stay updated on deadlines, new matches, reviews, and messages." />;
-const Saved = () => <PlaceholderPage title="Saved Opportunities" emoji="🔖" desc="Your bookmarked scholarships, jobs, and opportunities sorted by deadline." />;
-const Leaderboard = () => <PlaceholderPage title="Leaderboard" emoji="🏆" desc="See how your consistency compares with peers across Nigerian universities." />;
-const Mentors = () => <PlaceholderPage title="Mentor Directory" emoji="🧑‍🏫" desc="Connect with scholarship alumni and industry professionals for guidance." />;
-const Documents = () => <PlaceholderPage title="Document Vault" emoji="📂" desc="Securely store your certificates, transcripts, and IDs for quick access." />;
-const Help = () => <PlaceholderPage title="Help & Support" emoji="❓" desc="Find answers to common questions and get in touch with our support team." />;
+/* ── Phase 3 Screens ── */
+import StreakDashboard from './pages/StreakDashboard';
+import Leaderboard from './pages/Leaderboard';
+import MentorDirectory from './pages/MentorDirectory';
+import MentorProfile from './pages/MentorProfile';
+import Messages from './pages/Messages';
+import JobBoard from './pages/JobBoard';
+import Notifications from './pages/Notifications';
+import Profile from './pages/Profile';
+import SavedOpportunities from './pages/SavedOpportunities';
+import ApplicationTracker from './pages/ApplicationTracker';
+import DocumentVault from './pages/DocumentVault';
+import Help from './pages/Help';
 
 export default function App() {
   return (
@@ -63,7 +52,7 @@ export default function App() {
 
             {/* Main app (with layout shell) */}
             <Route element={<Layout />}>
-              {/* Phase 1 */}
+              {/* Phase 1 — Core */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/discover" element={<BrowseOpportunities />} />
               <Route path="/opportunity/:id" element={<OpportunityDetail />} />
@@ -80,18 +69,19 @@ export default function App() {
               <Route path="/reviews" element={<ReviewSystem />} />
               <Route path="/community" element={<CommunityHub />} />
 
-              {/* Phase 3 placeholders */}
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/applications" element={<Applications />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/streak" element={<Streak />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/saved" element={<Saved />} />
+              {/* Phase 3 — Engagement, Jobs & Utilities */}
+              <Route path="/streak" element={<StreakDashboard />} />
               <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/mentors" element={<Mentors />} />
-              <Route path="/documents" element={<Documents />} />
+              <Route path="/mentors" element={<MentorDirectory />} />
+              <Route path="/mentors/:id" element={<MentorProfile />} />
+              <Route path="/messages" element={<Messages />} />
+              <Route path="/jobs" element={<JobBoard />} />
+              <Route path="/notifications" element={<Notifications />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Profile />} />
+              <Route path="/saved" element={<SavedOpportunities />} />
+              <Route path="/applications" element={<ApplicationTracker />} />
+              <Route path="/documents" element={<DocumentVault />} />
               <Route path="/help" element={<Help />} />
               <Route path="*" element={<Dashboard />} />
             </Route>
