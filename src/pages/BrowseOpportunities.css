@@ -1,18 +1,30 @@
 /* BrowseOpportunities — Apple Discover */
 .browse { display: flex; flex-direction: column; gap: var(--space-lg); }
-.browse__header { padding: var(--space-xs) 0; }
+.browse__header { display: flex; flex-direction: column; gap: var(--space-md); }
 .browse__title { font-family: var(--font-heading); font-size: var(--text-large-title); font-weight: 800; letter-spacing: -0.03em; color: var(--text-primary); margin: 0 0 var(--space-2xs); }
 .browse__subtitle { font-size: var(--text-subhead); color: var(--text-secondary); margin: 0; }
-.browse__filters { display: flex; gap: var(--space-xs); overflow-x: auto; padding-bottom: var(--space-2xs); -ms-overflow-style: none; scrollbar-width: none; }
-.browse__filters::-webkit-scrollbar { display: none; }
-.browse__controls { display: flex; align-items: center; justify-content: space-between; }
+.browse__controls { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); }
+.browse__control-right { display: flex; align-items: center; gap: var(--space-sm); }
+.browse__sort { padding: 8px 16px; font-size: var(--text-footnote); background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); }
+.browse__results-count { font-size: var(--text-caption); color: var(--text-tertiary); font-weight: 500; margin: 0; }
 .browse__count { font-size: var(--text-caption); color: var(--text-tertiary); font-weight: 500; }
 .browse__view-toggle { display: flex; gap: 2px; padding: 3px; background: var(--bg-secondary); border-radius: var(--radius-xs); }
 .browse__view-btn { width: 34px; height: 30px; border: none; background: transparent; color: var(--text-tertiary); border-radius: calc(var(--radius-xs) - 2px); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); }
 .browse__view-btn--active { background: var(--bg-surface); color: var(--text-primary); box-shadow: var(--shadow-xs); }
 .browse__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: var(--space-md); }
+.browse__item { animation: fadeInUp 0.4s var(--ease-smooth) backwards; }
 @media (max-width: 480px) { .browse__grid { grid-template-columns: 1fr; } }
 .browse__list { display: flex; flex-direction: column; gap: var(--space-sm); }
+.browse__filters { display: flex; flex-direction: column; gap: var(--space-lg); background: var(--bg-surface); border-radius: var(--radius-lg); padding: var(--space-lg); box-shadow: var(--shadow-sm); }
+.browse__filter-group { display: flex; flex-direction: column; gap: var(--space-xs); }
+.browse__filter-label { font-size: var(--text-footnote); font-weight: 600; color: var(--text-primary); }
+.browse__filter-checks, .browse__filter-radios { display: flex; flex-wrap: wrap; gap: var(--space-xs); }
+.browse__filter-check, .browse__filter-radio { display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: var(--bg-secondary); border-radius: var(--radius-full); font-size: var(--text-footnote); color: var(--text-secondary); cursor: pointer; transition: all var(--transition-fast); }
+.browse__filter-check input, .browse__filter-radio input { display: none; }
+.browse__filter-check:has(input:checked), .browse__filter-radio:has(input:checked) { background: rgba(111,181,217,0.12); color: var(--color-primary-dark); font-weight: 600; }
+.browse__slider { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--bg-secondary); border-radius: var(--radius-full); outline: none; }
+.browse__slider::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--color-primary); cursor: pointer; box-shadow: 0 2px 8px rgba(111,181,217,0.3); }
+.browse__filter-actions { display: flex; gap: var(--space-sm); padding-top: var(--space-sm); }
 .browse__empty { text-align: center; padding: var(--space-4xl) var(--space-xl); }
 .browse__empty-icon { font-size: 56px; opacity: 0.4; margin-bottom: var(--space-md); }
 .browse__empty-text { font-size: var(--text-body); color: var(--text-secondary); }
