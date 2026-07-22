@@ -1,76 +1,102 @@
-/* OpportunityCard — Floating Premium */
-.opp-card {
+/* OpportunityCard — Premium Floating Card */
+.opportunity-card {
   background: var(--bg-surface);
   border-radius: var(--radius-lg);
   border: none;
   box-shadow: var(--shadow-sm);
-  overflow: hidden;
+  overflow: visible;
   cursor: pointer;
   transition: all 0.35s var(--ease-smooth);
   position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-lg);
+  gap: var(--space-md);
 }
 
-.opp-card:hover {
+.opportunity-card:hover {
   transform: translateY(-3px);
   box-shadow: var(--shadow-lg);
 }
 
-.opp-card:active {
+.opportunity-card:active {
   transform: scale(0.98);
   transition: transform 100ms ease;
 }
 
-.opp-card__body {
-  padding: var(--space-lg);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-sm);
-}
-
-.opp-card__header {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-sm);
-}
-
-.opp-card__logo {
+/* Logo — floats above card edge */
+.opportunity-card__logo {
   width: 44px;
   height: 44px;
   border-radius: var(--radius-sm);
-  background: var(--gradient-card);
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: var(--font-heading);
   font-weight: 700;
   font-size: var(--text-body);
-  color: var(--color-primary);
+  color: white;
   flex-shrink: 0;
-  border: 1px solid var(--border-color);
 }
 
-.opp-card__info {
+/* Content area */
+.opportunity-card__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
   flex: 1;
   min-width: 0;
 }
 
-.opp-card__title {
+.opportunity-card__title {
   font-family: var(--font-heading);
   font-size: var(--text-subhead);
   font-weight: 600;
   color: var(--text-primary);
   margin: 0;
-  line-height: 1.3;
+  line-height: 1.35;
   letter-spacing: -0.01em;
 }
 
-.opp-card__org {
+.opportunity-card__org {
   font-size: var(--text-caption);
   color: var(--text-secondary);
-  margin: 2px 0 0;
+  margin: 0;
 }
 
-.opp-card__bookmark {
+/* Tags */
+.opportunity-card__tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: var(--space-2xs);
+}
+
+/* Match percentage */
+.opportunity-card__match {
+  display: flex;
+  align-items: center;
+}
+
+/* Footer — deadline + bookmark */
+.opportunity-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: var(--space-sm);
+  border-top: 0.5px solid var(--separator);
+  margin-top: auto;
+}
+
+.opportunity-card__deadline {
+  font-size: var(--text-caption);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 500;
+}
+
+.opportunity-card__bookmark {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-full);
@@ -83,34 +109,42 @@
   cursor: pointer;
   transition: all var(--transition-fast);
   flex-shrink: 0;
+  margin-right: -6px;
 }
-.opp-card__bookmark:hover { color: var(--color-primary); background: rgba(111,181,217,0.08); }
-.opp-card__bookmark--saved { color: var(--color-primary); }
-
-.opp-card__tags {
-  display: flex;
-  gap: var(--space-xs);
-  flex-wrap: wrap;
+.opportunity-card__bookmark:hover {
+  color: var(--color-primary);
+  background: rgba(111, 181, 217, 0.08);
 }
-
-.opp-card__footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-top: var(--space-sm);
-  border-top: 0.5px solid var(--separator);
-  margin-top: var(--space-2xs);
+.opportunity-card__bookmark:active {
+  transform: scale(0.85);
+  transition: transform 80ms ease;
 }
 
-.opp-card__deadline {
-  font-size: var(--text-caption);
-  color: var(--text-secondary);
-  display: flex;
-  align-items: center;
-  gap: 4px;
+/* Compact variant */
+.opportunity-card--compact {
+  padding: var(--space-md);
+  gap: var(--space-sm);
+}
+.opportunity-card--compact .opportunity-card__logo {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-footnote);
+}
+.opportunity-card--compact .opportunity-card__title {
+  font-size: var(--text-footnote);
 }
 
-.opp-card__match {
-  font-size: var(--text-caption);
-  font-weight: 600;
+/* ── Utility Classes (shared) ── */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Chip small variant */
+.chip-sm {
+  padding: 4px 12px;
+  font-size: var(--text-caption2);
+  font-weight: 500;
 }
