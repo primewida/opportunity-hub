@@ -285,6 +285,77 @@ async function main() {
   }
   console.log(`  ✅ ${faqs.length} FAQ items seeded`);
 
+// ── 10. Learning Roadmaps & Steps ─────────────────
+const roadmaps = [
+  {
+    title: 'JAMB Prep Mastery',
+    description: 'Complete preparation guide for UTME. Covers English, Mathematics, and General Studies.',
+    category: 'Test Prep',
+    estimatedWeeks: 8,
+    enrolledCount: 1250,
+    icon: '📚',
+    steps: [
+      { stepNumber: 1, title: 'Understanding JAMB Format', stepType: 'Article', estimatedDurationMinutes: 30, description: 'Overview of UTME structure, scoring, and time management' },
+      { stepNumber: 2, title: 'English Comprehension Drills', stepType: 'Practice', estimatedDurationMinutes: 60, description: 'Practice passages and vocabulary' },
+      { stepNumber: 3, title: 'Mathematics Fundamentals', stepType: 'Video', estimatedDurationMinutes: 45, description: 'Key formulas and problem-solving strategies' },
+      { stepNumber: 4, title: 'General Studies Revision', stepType: 'Article', estimatedDurationMinutes: 40, description: 'Current affairs, history, and general knowledge' },
+      { stepNumber: 5, title: 'Mock JAMB Test', stepType: 'Quiz', estimatedDurationMinutes: 120, description: 'Full-length practice exam' },
+    ]
+  },
+  {
+    title: 'React Developer Roadmap',
+    description: 'Master modern React development from basics to advanced patterns. Build portfolio-ready projects.',
+    category: 'Tech Skills',
+    estimatedWeeks: 12,
+    enrolledCount: 890,
+    icon: '⚛️',
+    steps: [
+      { stepNumber: 1, title: 'JavaScript ES6+ Refresher', stepType: 'Article', estimatedDurationMinutes: 60 },
+      { stepNumber: 2, title: 'React Fundamentals', stepType: 'Video', estimatedDurationMinutes: 90 },
+      { stepNumber: 3, title: 'State Management with Hooks', stepType: 'Practice', estimatedDurationMinutes: 60 },
+      { stepNumber: 4, title: 'API Integration & Data Fetching', stepType: 'Practice', estimatedDurationMinutes: 75 },
+      { stepNumber: 5, title: 'Build a Portfolio Project', stepType: 'Task', estimatedDurationMinutes: 180 },
+    ]
+  },
+  {
+    title: 'Scholarship Application Strategy',
+    description: 'Learn to write winning scholarship applications. Covers essays, recommendations, and interviews.',
+    category: 'Scholarship Prep',
+    estimatedWeeks: 4,
+    enrolledCount: 2100,
+    icon: '🏆',
+    steps: [
+      { stepNumber: 1, title: 'Finding the Right Scholarships', stepType: 'Article', estimatedDurationMinutes: 30 },
+      { stepNumber: 2, title: 'Crafting Your Personal Statement', stepType: 'Practice', estimatedDurationMinutes: 60 },
+      { stepNumber: 3, title: 'Getting Strong Recommendations', stepType: 'Article', estimatedDurationMinutes: 25 },
+      { stepNumber: 4, title: 'Interview Preparation', stepType: 'Video', estimatedDurationMinutes: 45 },
+    ]
+  },
+];
+
+for (const rm of roadmaps) {
+  const { steps, ...roadmapData } = rm;
+  const roadmap = await prisma.learningRoadmap.create({ data: roadmapData });
+  for (const step of steps) {
+    await prisma.roadmapStep.create({ data: { ...step, roadmapId: roadmap.id } });
+  }
+}
+console.log(`  ✅ ${roadmaps.length} learning roadmaps seeded`);
+
+// ── 11. Courses ─────────────────────────────────────
+const courses = [
+  { title: 'Python for Data Science', provider: 'Coursera', url: 'https://coursera.org/python-ds', price: 0, isFree: true, avgRating: 4.7, skillCategory: 'Tech Skills', enrolledCount: 45000, duration: '8 weeks' },
+  { title: 'Advanced React Patterns', provider: 'Udemy', url: 'https://udemy.com/react-patterns', price: 12.99, isFree: false, currency: 'USD', avgRating: 4.5, skillCategory: 'Tech Skills', enrolledCount: 12000, duration: '6 weeks' },
+  { title: 'IELTS Academic Prep', provider: 'British Council', url: 'https://britishcouncil.org/ielts', price: 0, isFree: true, avgRating: 4.8, skillCategory: 'Test Prep', enrolledCount: 78000, duration: '4 weeks' },
+  { title: 'Leadership & Team Management', provider: 'LinkedIn Learning', url: 'https://linkedin.com/learning/leadership', price: 0, isFree: true, avgRating: 4.3, skillCategory: 'Soft Skills', enrolledCount: 23000, duration: '3 weeks' },
+  { title: 'Technical Writing Masterclass', provider: 'Udemy', url: 'https://udemy.com/tech-writing', price: 9.99, isFree: false, currency: 'USD', avgRating: 4.6, skillCategory: 'Soft Skills', enrolledCount: 8500, duration: '5 weeks' },
+];
+
+for (const c of courses) {
+  await prisma.course.create({ data: c });
+}
+console.log(`  ✅ ${courses.length} courses seeded`);
+
   console.log('\n🎉 Database seeded successfully!\n');
   console.log('  Test login credentials:');
   console.log('  📧 Email: student@opportunityhub.ng');

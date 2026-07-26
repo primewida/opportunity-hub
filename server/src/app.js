@@ -8,6 +8,9 @@ import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
 import opportunityRoutes from './routes/opportunity.routes.js';
 import jobRoutes from './routes/job.routes.js';
+import roadmapRoutes from './routes/roadmap.routes.js';
+import courseRoutes from './routes/course.routes.js';
+import skillRoutes from './routes/skill.routes.js';
 
 const app = express();
 
@@ -34,6 +37,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/opportunities', opportunityRoutes);
 app.use('/api/jobs', jobRoutes);
+app.use('/api/roadmaps', roadmapRoutes);
+app.use('/api/courses', courseRoutes);
+app.use('/api/skills', skillRoutes);
 
 // 404 handler
 app.use((req, res) => {
