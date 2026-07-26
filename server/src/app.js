@@ -6,6 +6,8 @@ import config from './config/env.js';
 import { errorHandler } from './middleware/errorHandler.js';
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
+import opportunityRoutes from './routes/opportunity.routes.js';
+import jobRoutes from './routes/job.routes.js';
 
 const app = express();
 
@@ -30,6 +32,8 @@ app.get('/api/health', (req, res) => {
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/opportunities', opportunityRoutes);
+app.use('/api/jobs', jobRoutes);
 
 // 404 handler
 app.use((req, res) => {
