@@ -18,6 +18,10 @@ import cvRoutes from './routes/cv.routes.js';
 import coverLetterRoutes from './routes/coverLetter.routes.js';
 import interviewRoutes from './routes/interview.routes.js';
 import testRoutes from './routes/test.routes.js';
+import streakRoutes from './routes/streak.routes.js';
+import leaderboardRoutes from './routes/leaderboard.routes.js';
+import documentRoutes from './routes/document.routes.js';
+import applicationRoutes from './routes/application.routes.js';
 
 const app = express();
 
@@ -54,6 +58,10 @@ app.use('/api/cv', cvRoutes);
 app.use('/api/cover-letter', coverLetterRoutes);
 app.use('/api/interview', interviewRoutes);
 app.use('/api/tests', testRoutes);
+app.use('/api/streak', streakRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/documents', documentRoutes);
+app.use('/api/applications', applicationRoutes);
 
 // 404 handler
 app.use((req, res) => {
