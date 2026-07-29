@@ -22,6 +22,12 @@ import streakRoutes from './routes/streak.routes.js';
 import leaderboardRoutes from './routes/leaderboard.routes.js';
 import documentRoutes from './routes/document.routes.js';
 import applicationRoutes from './routes/application.routes.js';
+import notificationRoutes from './routes/notification.routes.js';
+import searchRoutes from './routes/search.routes.js';
+import faqRoutes from './routes/faq.routes.js';
+import onboardingRoutes from './routes/onboarding.routes.js';
+import dashboardRoutes from './routes/dashboard.routes.js';
+import categoryRoutes from './routes/category.routes.js';
 
 const app = express();
 
@@ -62,6 +68,12 @@ app.use('/api/streak', streakRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/documents', documentRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/faq', faqRoutes);
+app.use('/api/onboarding', onboardingRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/categories', categoryRoutes);
 
 // 404 handler
 app.use((req, res) => {
