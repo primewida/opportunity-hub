@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Bookmark, BookmarkCheck, Share2, ExternalLink, Check, X as XIcon, Calendar, MapPin, Building2, GraduationCap, FileText, ChevronRight, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { MatchBadge, Button, Badge, Card, ProgressBar } from '../components/ui';
-import { OPPORTUNITIES } from '../data/mockData';
+import { opportunities } from '../services/api';
 import { formatDate, getDeadlineColor, getDeadlineText, daysUntilDeadline } from '../utils/helpers';
 import './OpportunityDetail.css';
 
@@ -13,8 +13,22 @@ export default function OpportunityDetail() {
   const app = useApp();
   const [showSticky, setShowSticky] = useState(false);
   const heroRef = useRef(null);
-  const opp = OPPORTUNITIES.find(o => o.id === id);
+  
+  const [opp, setOpp] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const isSaved = app.savedOpportunities?.includes(id);
+
+  useEffect(() => {
+    opportunities.getById(id).then(res => {
+      setOpp(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, [id]);
 
   useEffect(() => {
     const handleScroll = () => { setShowSticky(window.scrollY > 260); };
@@ -22,7 +36,8 @@ export default function OpportunityDetail() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  if (!opp) return (
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading opportunity...</div>;
+  if (error || !opp) return (
     <div style={{ padding: 'var(--space-2xl)', textAlign: 'center' }}>
       <h2>Opportunity not found</h2>
       <Button variant="primary" onClick={() => navigate('/discover')}>Browse Opportunities</Button>
@@ -71,10 +86,10 @@ export default function OpportunityDetail() {
       <div className="detail__section">
         <h2 className="detail__section-title">Your Match Score</h2>
         <div className="detail__match-card">
-          <MatchBadge percentage={opp.matchPercentage} size="lg" />
+          <MatchBadge percentage={opp.matchPercentage || 0} size="lg" />
           <p className="detail__match-text">
-            {opp.matchPercentage >= 80 ? "Great match! You meet most requirements." :
-             opp.matchPercentage >= 50 ? "Good potential. A few things to work on." :
+            {(opp.matchPercentage || 0) >= 80 ? "Great match! You meet most requirements." :
+             (opp.matchPercentage || 0) >= 50 ? "Good potential. A few things to work on." :
              "Some preparation needed. Check what's missing below."}
           </p>
           <div className="detail__match-reasons">
@@ -101,7 +116,7 @@ export default function OpportunityDetail() {
               </div>
             )}
           </div>
-          {opp.matchPercentage < 100 && (
+          {(opp.matchPercentage || 0) < 100 && (
             <div className="detail__build-skills" onClick={() => navigate('/learn')}>
               <div>
                 <strong>Build Missing Skills</strong>

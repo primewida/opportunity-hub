@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { JOBS } from '../data/mockData';
+import { jobs } from '../services/api';
 import { SearchBar, FilterChips, Card, Badge, Button } from '../components/ui';
 import { MapPin, Briefcase, Clock, DollarSign } from 'lucide-react';
 import './JobBoard.css';
@@ -10,11 +10,29 @@ export default function JobBoard() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const types = ['All', 'Full-time', 'Part-time', 'Internship', 'NYSC', 'Contract'];
-  const filtered = useMemo(() => (JOBS || []).filter(j => {
-    if (search && !j.title.toLowerCase().includes(search.toLowerCase()) && !j.company.toLowerCase().includes(search.toLowerCase())) return false;
+  
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    jobs.getAll().then(res => {
+      setData(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
+  
+  const filtered = useMemo(() => (data || []).filter(j => {
+    if (search && !j.title.toLowerCase().includes(search.toLowerCase()) && !(j.company && j.company.toLowerCase().includes(search.toLowerCase()))) return false;
     if (typeFilter !== 'All' && j.type !== typeFilter) return false;
     return true;
-  }), [search, typeFilter]);
+  }), [search, typeFilter, data]);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading jobs...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="jobs">

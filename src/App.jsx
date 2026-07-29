@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/layout/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 
 /* ── Phase 1 Screens ── */
 import SplashScreen from './pages/SplashScreen';
@@ -50,8 +51,8 @@ export default function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile-setup" element={<ProfileSetup />} />
 
-            {/* Main app (with layout shell) */}
-            <Route element={<Layout />}>
+            {/* Main app (with layout shell + auth protection) */}
+            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
               {/* Phase 1 — Core */}
               <Route path="/" element={<Dashboard />} />
               <Route path="/discover" element={<BrowseOpportunities />} />

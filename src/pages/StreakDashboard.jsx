@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { streak } from '../services/api';
 import { Card, Button, ProgressBar } from '../components/ui';
 import { Flame, Target, Clock, Calendar, TrendingUp, Award } from 'lucide-react';
 import './StreakDashboard.css';
@@ -6,42 +7,89 @@ import './StreakDashboard.css';
 const weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
 
-// Generate mock heatmap data (26 weeks)
+// Generate fallback heatmap data (26 weeks)
 const generateHeatmap = () => {
   const data = [];
   for (let w = 0; w < 26; w++) {
     const week = [];
     for (let d = 0; d < 7; d++) {
-      const r = Math.random();
-      week.push(r > 0.7 ? 3 : r > 0.4 ? 2 : r > 0.2 ? 1 : 0);
+      week.push(0);
     }
     data.push(week);
   }
   return data;
 };
 
-const heatmapData = generateHeatmap();
+const processLogs = (logs) => {
+  if (!logs || !logs.length) return generateHeatmap();
+  if (Array.isArray(logs[0])) return logs; // Already 2D
+  
+  // Try to parse if flat array
+  const data = [];
+  let i = 0;
+  for (let w = 0; w < 26; w++) {
+    const week = [];
+    for (let d = 0; d < 7; d++) {
+      const level = logs[i] !== undefined ? (typeof logs[i] === 'object' ? logs[i].level || 0 : logs[i]) : 0;
+      week.push(level > 3 ? 3 : level);
+      i++;
+    }
+    data.push(week);
+  }
+  return data;
+};
 
 export default function StreakDashboard() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [goalDays, setGoalDays] = useState([0, 1, 2, 3, 4]);
   const [goalMinutes, setGoalMinutes] = useState(30);
+  const [saving, setSaving] = useState(false);
 
-  const stats = [
-    { icon: Flame, label: 'Current Streak', value: '12 days', color: 'var(--color-accent-amber)' },
-    { icon: Award, label: 'Longest Streak', value: '34 days', color: 'var(--color-primary)' },
-    { icon: Clock, label: 'Total Hours', value: '127 hrs', color: 'var(--color-accent-teal)' },
-    { icon: TrendingUp, label: 'This Week', value: '4.5 hrs', color: 'var(--color-success)' },
-  ];
+  useEffect(() => {
+    streak.get().then(res => {
+      setData(res);
+      if (res.goalDaysOfWeek) {
+        try { setGoalDays(JSON.parse(res.goalDaysOfWeek)); } catch(e){}
+      }
+      if (res.goalHoursPerDay) {
+        setGoalMinutes(res.goalHoursPerDay * 60);
+      }
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const handleSaveGoal = async () => {
+    setSaving(true);
+    try {
+      const updated = await streak.updateGoals({ goalDaysOfWeek: JSON.stringify(goalDays), goalHoursPerDay: goalMinutes / 60 });
+      setData(updated);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const stats = data ? [
+    { icon: Flame, label: 'Current Streak', value: `${data.currentStreakCount || 0} days`, color: 'var(--color-accent-amber)' },
+    { icon: Award, label: 'Longest Streak', value: `${data.longestStreakCount || 0} days`, color: 'var(--color-primary)' },
+    { icon: Clock, label: 'Daily Goal', value: `${goalMinutes} mins`, color: 'var(--color-accent-teal)' },
+    { icon: TrendingUp, label: 'Consistency', value: 'Active', color: 'var(--color-success)' },
+  ] : [];
 
   const toggleDay = (d) => setGoalDays(g => g.includes(d) ? g.filter(x => x !== d) : [...g, d]);
   const heatColors = ['var(--bg-secondary)', 'rgba(253,203,110,0.3)', 'rgba(253,203,110,0.6)', 'var(--color-accent-amber)'];
+  const heatmapData = data ? processLogs(data.logs) : generateHeatmap();
+
+  if (loading) return <div className="streak">Loading...</div>;
 
   return (
     <div className="streak">
       <div className="streak__hero">
         <div className="streak__flame-container">
           <Flame size={56} className="streak__flame-icon" />
-          <span className="streak__count">12</span>
+          <span className="streak__count">{data?.currentStreakCount || 0}</span>
         </div>
         <h1 className="streak__hero-title">Day Streak 🔥</h1>
         <p className="streak__hero-text">You're on fire! Keep learning every day.</p>
@@ -105,7 +153,9 @@ export default function StreakDashboard() {
                 ))}
               </div>
             </div>
-            <Button variant="primary" fullWidth>Save Goal</Button>
+            <Button variant="primary" fullWidth onClick={handleSaveGoal} disabled={saving}>
+              {saving ? 'Saving...' : 'Save Goal'}
+            </Button>
           </div>
         </Card>
       </div>

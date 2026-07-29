@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import { ArrowLeft, Clock, Users, CheckCircle, BookOpen, Play, FileText, HelpCircle, ExternalLink } from 'lucide-react';
 import { Stepper, ProgressBar, Modal, Button, Badge } from '../components/ui';
-import { LEARNING_ROADMAPS } from '../data/mockData';
+import { roadmaps } from '../services/api';
 import './RoadmapDetail.css';
 
 const typeIcons = { video: Play, article: FileText, quiz: HelpCircle, external: ExternalLink };
@@ -11,13 +11,29 @@ const typeLabels = { video: 'Video Lesson', article: 'Article', quiz: 'Practice 
 export default function RoadmapDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const roadmap = LEARNING_ROADMAPS.find((r) => r.id === id);
 
-  const [steps, setSteps] = useState(roadmap?.steps || []);
+  const [roadmap, setRoadmap] = useState(null);
+  const [steps, setSteps] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
   const [activeStep, setActiveStep] = useState(null);
   const [showModal, setShowModal] = useState(false);
 
-  if (!roadmap) {
+  useEffect(() => {
+    roadmaps.getById(id).then(res => {
+      const data = res.data || res;
+      setRoadmap(data);
+      setSteps(data.steps || []);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading roadmap...</div>;
+  if (error || !roadmap) {
     return (
       <div className="roadmap-detail">
         <button className="roadmap-detail__back" onClick={() => navigate('/learn')}>
@@ -90,7 +106,7 @@ export default function RoadmapDetail() {
               <Clock size={15} /> {roadmap.estimatedWeeks} weeks
             </span>
             <span className="roadmap-detail__meta-item">
-              <Users size={15} /> {roadmap.enrolledCount.toLocaleString()} enrolled
+              <Users size={15} /> {roadmap.enrolledCount?.toLocaleString() || 0} enrolled
             </span>
           </div>
         </div>

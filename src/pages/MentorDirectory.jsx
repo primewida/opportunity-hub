@@ -1,16 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Card, SearchBar, FilterChips, Avatar, Badge, Button } from '../components/ui';
-import { MENTORS } from '../data/mockData';
+import { mentors } from '../services/api';
 import { MapPin, Briefcase, MessageSquare } from 'lucide-react';
 import './MentorDirectory.css';
 
 export default function MentorDirectory() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [field, setField] = useState('All');
-  const fields = ['All', ...new Set((MENTORS || []).map(m => m.field || m.expertise || 'General'))];
-  const filtered = (MENTORS || []).filter(m => {
+  const [mentorsList, setMentorsList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    mentors.getAll().then(res => {
+      const mapped = (res || []).map(m => ({
+        ...m,
+        name: m.user ? `${m.user.firstName} ${m.user.lastName}` : 'Unknown Mentor',
+        role: m.bio || m.title || 'Mentor',
+        expertise: m.mentoringTopics?.[0] || m.expertise || 'General',
+        topics: m.mentoringTopics || m.skills || []
+      }));
+      setMentorsList(mapped);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
+  const fields = ['All', ...new Set(mentorsList.map(m => m.field || m.expertise || 'General'))];
+  const filtered = mentorsList.filter(m => {
     if (search && !m.name.toLowerCase().includes(search.toLowerCase()) && !(m.field || '').toLowerCase().includes(search.toLowerCase())) return false;
     if (field !== 'All' && (m.field || m.expertise) !== field) return false;
     return true;
@@ -24,6 +43,7 @@ export default function MentorDirectory() {
       </div>
       <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search mentors by name or expertise..." />
       <FilterChips options={fields} selected={field} onChange={setField} />
+      {loading ? <p style={{ padding: '2rem', textAlign: 'center' }}>Loading mentors...</p> : (
       <div className="mentors__grid">
         {filtered.map(mentor => (
           <Card key={mentor.id} variant="interactive" onClick={() => navigate(`/mentors/${mentor.id}`)}>
@@ -43,6 +63,7 @@ export default function MentorDirectory() {
           </Card>
         ))}
       </div>
+      )}
     </div>
   );
 }

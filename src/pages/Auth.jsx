@@ -7,7 +7,7 @@ import './Auth.css';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { login, completeOnboarding } = useApp();
+  const { login, register, completeOnboarding } = useApp();
   const [mode, setMode] = useState('login');
   const [method, setMethod] = useState('phone');
   const [phone, setPhone] = useState('');
@@ -29,16 +29,30 @@ export default function Auth() {
     if (val && idx < 3) otpRefs[idx + 1].current?.focus();
   };
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     if (method === 'phone' && !otpSent) { setOtpSent(true); setTimer(30); return; }
     setLoading(true);
-    setTimeout(() => {
-      completeOnboarding();
-      login({ email: email || `${phone}@phone.com`, name: name || 'Adaeze Okafor' });
-      setLoading(false);
+    try {
+      if (method === 'phone') {
+        // Phone OTP still simulated — just log in as test user
+        await login('student@opportunityhub.ng', 'password123');
+      } else if (mode === 'login') {
+        await login(email, password);
+      } else {
+        const [firstName, ...rest] = name.split(' ');
+        const lastName = rest.join(' ') || firstName;
+        await register({ email, password, firstName, lastName });
+      }
       navigate('/profile-setup', { replace: true });
-    }, 800);
+    } catch (err) {
+      setError(err.message || 'Authentication failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (otpSent) {
@@ -101,6 +115,7 @@ export default function Auth() {
                 {mode === 'login' && <button type="button" className="auth__link auth__forgot">Forgot Password?</button>}
               </div></>
           )}
+          {error && <p className="auth__error" style={{ color: 'var(--color-error, #ef4444)', fontSize: '0.85rem', textAlign: 'center', margin: '0.5rem 0' }}>{error}</p>}
           <Button variant="primary" fullWidth loading={loading} type="submit">{mode === 'login' ? 'Log In' : 'Create Account'} <ArrowRight size={18} /></Button>
         </form>
 

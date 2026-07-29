@@ -1,31 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { documents } from '../services/api';
 import { Card, Button, Badge, Modal } from '../components/ui';
 import { FileText, Upload, Download, Trash2, Eye, FolderOpen, Shield, Search, Plus } from 'lucide-react';
 import './DocumentVault.css';
 
-const mockDocuments = [
-  { id: 'd1', name: 'BSc Certificate - UNILAG.pdf', type: 'Certificate', size: '2.4 MB', uploadedAt: '2026-05-10', icon: '🎓' },
-  { id: 'd2', name: 'NYSC Discharge Certificate.pdf', type: 'Certificate', size: '1.8 MB', uploadedAt: '2026-04-22', icon: '📜' },
-  { id: 'd3', name: 'Official Transcript.pdf', type: 'Transcript', size: '3.1 MB', uploadedAt: '2026-06-01', icon: '📄' },
-  { id: 'd4', name: 'International Passport.pdf', type: 'ID', size: '4.2 MB', uploadedAt: '2026-03-15', icon: '🛂' },
-  { id: 'd5', name: 'NIN Slip.pdf', type: 'ID', size: '0.8 MB', uploadedAt: '2026-02-20', icon: '🆔' },
-  { id: 'd6', name: 'Professional CV v3.pdf', type: 'CV', size: '0.5 MB', uploadedAt: '2026-06-28', icon: '📝' },
-  { id: 'd7', name: 'IELTS Score Report.pdf', type: 'Test Score', size: '1.2 MB', uploadedAt: '2026-01-10', icon: '📊' },
-  { id: 'd8', name: 'Recommendation Letter - Prof Adeyemi.pdf', type: 'Reference', size: '0.9 MB', uploadedAt: '2026-05-30', icon: '✉️' },
-];
-
 const categories = ['All', 'Certificate', 'Transcript', 'ID', 'CV', 'Test Score', 'Reference'];
+
+const getIcon = (type) => {
+  switch (type) {
+    case 'Certificate': return '🎓';
+    case 'Transcript': return '📄';
+    case 'ID': return '🛂';
+    case 'CV': return '📝';
+    case 'Test Score': return '📊';
+    case 'Reference': return '✉️';
+    default: return '📄';
+  }
+};
 
 export default function DocumentVault() {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
   const [showUpload, setShowUpload] = useState(false);
+  const [docs, setDocs] = useState([]);
+  const [storage, setStorage] = useState({ used: 0, total: 50, percentage: 0 });
+  const [loading, setLoading] = useState(true);
 
-  const filtered = mockDocuments.filter(d => {
+  const fetchDocs = () => {
+    Promise.all([documents.getAll(), documents.getStorage()])
+      .then(([docRes, storeRes]) => {
+        const mapped = docRes.map(d => ({
+          id: d.id,
+          name: d.documentName,
+          type: d.documentCategory || 'Other',
+          size: d.fileSizeBytes ? `${(d.fileSizeBytes / 1024 / 1024).toFixed(1)} MB` : 'Unknown',
+          uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString().split('T')[0] : 'Unknown',
+          icon: getIcon(d.documentCategory)
+        }));
+        setDocs(mapped);
+        if (storeRes) setStorage(storeRes);
+        setLoading(false);
+      }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchDocs();
+  }, []);
+
+  const handleDelete = async (id) => {
+    await documents.delete(id);
+    fetchDocs();
+  };
+
+  const handleUploadMock = async () => {
+    // In a real app we'd get file data from the dropzone
+    await documents.upload({ documentName: 'New File.pdf', documentCategory: 'CV', fileSizeBytes: 1048576 });
+    setShowUpload(false);
+    fetchDocs();
+  };
+
+  const filtered = docs.filter(d => {
     if (filter !== 'All' && d.type !== filter) return false;
     if (search && !d.name.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
+
+  if (loading) return <div className="vault">Loading...</div>;
 
   return (
     <div className="vault">
@@ -71,7 +111,7 @@ export default function DocumentVault() {
               <div className="vault__doc-actions">
                 <button className="vault__action-btn" title="Preview"><Eye size={16} /></button>
                 <button className="vault__action-btn" title="Download"><Download size={16} /></button>
-                <button className="vault__action-btn vault__action-btn--danger" title="Delete"><Trash2 size={16} /></button>
+                <button className="vault__action-btn vault__action-btn--danger" title="Delete" onClick={() => handleDelete(doc.id)}><Trash2 size={16} /></button>
               </div>
             </div>
           </Card>
@@ -79,8 +119,8 @@ export default function DocumentVault() {
       </div>
 
       <div className="vault__storage">
-        <div className="vault__storage-bar"><div className="vault__storage-fill" style={{ width: '35%' }} /></div>
-        <span className="vault__storage-text">14.9 MB of 50 MB used</span>
+        <div className="vault__storage-bar"><div className="vault__storage-fill" style={{ width: `${storage.percentage || 0}%` }} /></div>
+        <span className="vault__storage-text">{storage.used || 0} MB of {storage.total || 50} MB used</span>
       </div>
 
       <Modal isOpen={showUpload} onClose={() => setShowUpload(false)} title="Upload Document">
@@ -91,7 +131,7 @@ export default function DocumentVault() {
             <span>PDF, DOC, JPG, PNG — Max 10MB</span>
           </div>
           <select className="input"><option value="">Select document type...</option>{categories.slice(1).map(c => <option key={c}>{c}</option>)}</select>
-          <Button variant="primary" fullWidth onClick={() => setShowUpload(false)}>Upload Document</Button>
+          <Button variant="primary" fullWidth onClick={handleUploadMock}>Upload Document</Button>
         </div>
       </Modal>
     </div>

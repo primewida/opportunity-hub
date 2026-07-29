@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { applications } from '../services/api';
 import { Card, Button, Badge, Modal } from '../components/ui';
 import { Plus, GripVertical, ExternalLink, Calendar, Building2, MoreHorizontal } from 'lucide-react';
 import './ApplicationTracker.css';
@@ -12,25 +13,50 @@ const columns = [
   { id: 'rejected', title: 'Rejected', color: 'var(--color-error)', emoji: '❌' },
 ];
 
-const mockApps = [
-  { id: 'a1', title: 'Chevening Scholarship 2026', org: 'UK Government', deadline: '2026-11-01', status: 'applying', type: 'Scholarship' },
-  { id: 'a2', title: 'PTDF Overseas Scholarship', org: 'PTDF Nigeria', deadline: '2026-09-15', status: 'submitted', type: 'Scholarship' },
-  { id: 'a3', title: 'Flutterwave Internship', org: 'Flutterwave', deadline: '2026-08-01', status: 'interview', type: 'Internship' },
-  { id: 'a4', title: 'Google STEP Internship', org: 'Google', deadline: '2026-10-30', status: 'wishlist', type: 'Internship' },
-  { id: 'a5', title: 'TETFund Research Grant', org: 'TETFund', deadline: '2026-08-20', status: 'submitted', type: 'Grant' },
-  { id: 'a6', title: 'Andela Fellowship', org: 'Andela', deadline: '2026-07-15', status: 'accepted', type: 'Fellowship' },
-  { id: 'a7', title: 'McKinsey Internship', org: 'McKinsey', deadline: '2026-07-30', status: 'rejected', type: 'Internship' },
-  { id: 'a8', title: 'AGIP Scholarship', org: 'NAOC', deadline: '2026-12-01', status: 'wishlist', type: 'Scholarship' },
-];
+// Mock apps removed
 
 export default function ApplicationTracker() {
-  const [apps, setApps] = useState(mockApps);
+  const [apps, setApps] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [showAdd, setShowAdd] = useState(false);
   const [dragItem, setDragItem] = useState(null);
 
+  const fetchApps = () => {
+    applications.getAll().then(res => {
+      const flat = [];
+      if (res) {
+        for (const [status, list] of Object.entries(res)) {
+          // Normalize status key to match our columns (e.g. 'wishlist', 'applying')
+          const normalizedStatus = status.toLowerCase();
+          list.forEach(app => flat.push({ ...app, status: normalizedStatus }));
+        }
+      }
+      setApps(flat);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchApps();
+  }, []);
+
   const handleDragStart = (e, appId) => { setDragItem(appId); e.dataTransfer.effectAllowed = 'move'; };
   const handleDragOver = (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-  const handleDrop = (e, colId) => { e.preventDefault(); if (dragItem) { setApps(a => a.map(x => x.id === dragItem ? { ...x, status: colId } : x)); setDragItem(null); } };
+  const handleDrop = async (e, colId) => { 
+    e.preventDefault(); 
+    if (dragItem) { 
+      // Optimistic update
+      setApps(a => a.map(x => x.id === dragItem ? { ...x, status: colId } : x)); 
+      try {
+        await applications.update(dragItem, { status: colId });
+      } catch(err) {
+        fetchApps(); // revert on failure
+      }
+      setDragItem(null); 
+    } 
+  };
+
+  if (loading) return <div className="tracker">Loading...</div>;
 
   return (
     <div className="tracker">
@@ -82,7 +108,13 @@ export default function ApplicationTracker() {
           <input className="input" placeholder="Organization..." />
           <input className="input" type="date" />
           <select className="input"><option>Scholarship</option><option>Internship</option><option>Fellowship</option><option>Grant</option><option>Job</option></select>
-          <Button variant="primary" fullWidth onClick={() => setShowAdd(false)}>Add to Wishlist</Button>
+          <Button variant="primary" fullWidth onClick={() => {
+            // Mock adding an application
+            applications.create({ title: 'New Opportunity', org: 'Unknown', status: 'wishlist', type: 'Scholarship' }).then(() => {
+              setShowAdd(false);
+              fetchApps();
+            });
+          }}>Add to Wishlist</Button>
         </div>
       </Modal>
     </div>

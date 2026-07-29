@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { NOTIFICATIONS } from '../data/mockData';
+import { notifications } from '../services/api';
 import { Card, Button, FilterChips } from '../components/ui';
 import { getRelativeTime } from '../utils/helpers';
 import { Bell, Bookmark, Award, Calendar, MessageSquare, TrendingUp, CheckCheck } from 'lucide-react';
@@ -11,8 +11,32 @@ const iconMap = { deadline: Calendar, match: TrendingUp, message: MessageSquare,
 export default function Notifications() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState('All');
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
   const filters = ['All', 'Unread', 'Deadlines', 'Matches', 'Messages'];
-  const notifs = (NOTIFICATIONS || []).filter(n => {
+
+  const fetchNotifs = () => {
+    notifications.getAll().then(res => {
+      setData(res.notifications || []);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchNotifs();
+  }, []);
+
+  const handleMarkAllRead = async () => {
+    await notifications.markAllRead();
+    fetchNotifs();
+  };
+
+  const handleMarkRead = async (id) => {
+    await notifications.markRead(id);
+    fetchNotifs();
+  };
+
+  const notifs = data.filter(n => {
     if (filter === 'Unread') return !n.isRead && !n.read;
     if (filter === 'Deadlines') return n.type === 'deadline';
     if (filter === 'Matches') return n.type === 'match';
@@ -20,12 +44,14 @@ export default function Notifications() {
     return true;
   });
 
+  if (loading) return <div className="notifs">Loading...</div>;
+
   return (
     <div className="notifs">
       <div className="notifs__header">
         <div className="notifs__header-row">
           <h1 className="notifs__title">🔔 Notifications</h1>
-          <Button variant="ghost" size="sm" icon={CheckCheck}>Mark all read</Button>
+          <Button variant="ghost" size="sm" icon={CheckCheck} onClick={handleMarkAllRead}>Mark all read</Button>
         </div>
       </div>
       <FilterChips options={filters} selected={filter} onChange={setFilter} />
@@ -35,7 +61,7 @@ export default function Notifications() {
         ) : notifs.map(n => {
           const Icon = iconMap[n.type] || Bell;
           return (
-            <div key={n.id} className={`notifs__item ${!n.isRead && !n.read ? 'notifs__item--unread' : ''}`}>
+            <div key={n.id} className={`notifs__item ${!n.isRead && !n.read ? 'notifs__item--unread' : ''}`} onClick={() => handleMarkRead(n.id)}>
               <div className={`notifs__icon notifs__icon--${n.type || 'general'}`}><Icon size={18} /></div>
               <div className="notifs__content">
                 <p className="notifs__text">{n.message || n.title}</p>

@@ -1,8 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Search, BookOpen, Clock, Users } from 'lucide-react';
 import { SearchBar, FilterChips, Card, ProgressBar, Badge } from '../components/ui';
-import { LEARNING_ROADMAPS } from '../data/mockData';
+import { roadmaps } from '../services/api';
 import './LearningRoadmaps.css';
 
 const CATEGORIES = ['All', 'Test Prep', 'Tech Skills', 'Scholarship Prep', 'Soft Skills'];
@@ -11,21 +11,38 @@ export default function LearningRoadmaps() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    roadmaps.getAll().then(res => {
+      setData(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
 
   const continueLearning = useMemo(
-    () => LEARNING_ROADMAPS.filter((r) => r.progress > 0),
-    []
+    () => data.filter((r) => r.progress > 0),
+    [data]
   );
 
   const filtered = useMemo(() => {
-    let result = [...LEARNING_ROADMAPS];
+    let result = [...data];
     if (search) {
       const q = search.toLowerCase();
       result = result.filter((r) => r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
     }
     if (category !== 'All') result = result.filter((r) => r.category === category);
     return result;
-  }, [search, category]);
+  }, [search, category, data]);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading roadmaps...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="learning">
@@ -111,7 +128,7 @@ export default function LearningRoadmaps() {
                 </span>
                 <span className="learning__meta-item">
                   <Users size={14} />
-                  {roadmap.enrolledCount.toLocaleString()} enrolled
+                  {roadmap.enrolledCount?.toLocaleString() || 0} enrolled
                 </span>
               </div>
               {roadmap.progress > 0 && (

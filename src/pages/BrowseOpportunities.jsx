@@ -1,11 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { SlidersHorizontal, Grid3X3, List, X } from 'lucide-react';
+import { SlidersHorizontal, Grid3X3, List, X, Search } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OpportunityCard, FilterChips, SearchBar, Button, Modal, EmptyState } from '../components/ui';
-import { OPPORTUNITIES } from '../data/mockData';
+import { opportunities } from '../services/api';
 import { OPPORTUNITY_TYPES, EDUCATION_LEVELS, FIELDS_OF_STUDY } from '../utils/constants';
-import { Search } from 'lucide-react';
 import './BrowseOpportunities.css';
 
 export default function BrowseOpportunities() {
@@ -18,13 +17,27 @@ export default function BrowseOpportunities() {
   const [sortBy, setSortBy] = useState('match');
   const [filters, setFilters] = useState({ types: [], education: '', fields: [], location: 'Any', minMatch: 0, deadline: 'Any' });
 
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    opportunities.getAll().then(res => {
+      setData(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
+
   const chipOptions = ['All', ...OPPORTUNITY_TYPES];
 
   const filtered = useMemo(() => {
-    let result = [...OPPORTUNITIES];
+    let result = [...data];
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(o => o.title.toLowerCase().includes(q) || o.organization.toLowerCase().includes(q));
+      result = result.filter(o => o.title.toLowerCase().includes(q) || (o.organization && o.organization.toLowerCase().includes(q)));
     }
     if (typeFilter !== 'All') result = result.filter(o => o.type === typeFilter);
     if (filters.types.length) result = result.filter(o => filters.types.includes(o.type));
@@ -37,17 +50,20 @@ export default function BrowseOpportunities() {
     if (filters.deadline === '7days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 7 && d >= 0; });
     if (filters.deadline === '30days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 30 && d >= 0; });
 
-    if (sortBy === 'match') result.sort((a, b) => b.matchPercentage - a.matchPercentage);
+    if (sortBy === 'match') result.sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
     else if (sortBy === 'deadline') result.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
     else if (sortBy === 'newest') result.sort((a, b) => new Date(b.deadline) - new Date(a.deadline));
     return result;
-  }, [search, typeFilter, sortBy, filters]);
+  }, [search, typeFilter, sortBy, filters, data]);
 
   const toggleType = (t) => {
     setFilters(f => ({ ...f, types: f.types.includes(t) ? f.types.filter(x => x !== t) : [...f.types, t] }));
   };
 
   const clearFilters = () => setFilters({ types: [], education: '', fields: [], location: 'Any', minMatch: 0, deadline: 'Any' });
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading opportunities...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="browse">

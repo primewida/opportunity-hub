@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { TabBar, Card, Button, Modal } from '../components/ui';
-import { COMMUNITY_GROUPS, COMMUNITY_POSTS } from '../data/mockData';
+import { community } from '../services/api';
 import { getRelativeTime } from '../utils/helpers';
 import { ThumbsUp, ThumbsDown, MessageSquare, Share2, Plus, Users, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import './CommunityHub.css';
@@ -18,9 +18,27 @@ export default function CommunityHub() {
     { label: 'Trending', icon: ThumbsUp },
   ];
 
-  const joinedGroups = COMMUNITY_GROUPS?.filter(g => g.joined) || COMMUNITY_GROUPS?.slice(0, 3) || [];
-  const otherGroups = COMMUNITY_GROUPS?.filter(g => !g.joined) || COMMUNITY_GROUPS?.slice(3) || [];
-  const trendingPosts = [...(COMMUNITY_POSTS || [])].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
+  const [groups, setGroups] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([
+      community.getGroups(),
+      community.getFeed(1)
+    ]).then(([groupsData, feedData]) => {
+      setGroups(groupsData || []);
+      setPosts(feedData?.data || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
+  const joinedGroups = groups.filter(g => g.joined) || groups.slice(0, 3) || [];
+  const otherGroups = groups.filter(g => !g.joined) || groups.slice(3) || [];
+  const trendingPosts = [...posts].sort((a, b) => (b.upvotes || 0) - (a.upvotes || 0));
 
   const handleVote = (postId, type) => {
     setVotes(v => {
@@ -28,6 +46,18 @@ export default function CommunityHub() {
       if (current === type) return { ...v, [postId]: null };
       return { ...v, [postId]: type };
     });
+    community.vote(postId, type).then(updated => {
+      setPosts(prev => prev.map(p => p.id === postId ? { ...p, ...updated } : p));
+    }).catch(console.error);
+  };
+
+  const handleCreatePost = () => {
+    const groupId = joinedGroups[0]?.id || 'general';
+    community.createPost(groupId, newPostText).then(post => {
+      setPosts(prev => [post, ...prev]);
+      setNewPostText('');
+      setShowNewPost(false);
+    }).catch(console.error);
   };
 
   const renderPost = (post) => (
@@ -107,7 +137,7 @@ export default function CommunityHub() {
             </div>
           )}
           <div className="community__feed">
-            {(COMMUNITY_POSTS || []).map(post => renderPost(post))}
+            {loading ? <p style={{textAlign: 'center', padding: '2rem'}}>Loading feed...</p> : posts.map(post => renderPost(post))}
           </div>
         </div>
       )}
@@ -165,7 +195,7 @@ export default function CommunityHub() {
             value={newPostText} onChange={e => setNewPostText(e.target.value)} />
           <div className="community__new-post-actions">
             <span className="community__new-post-count">{newPostText.length}/500</span>
-            <Button variant="primary" disabled={!newPostText.trim()} onClick={() => { setNewPostText(''); setShowNewPost(false); }}>
+            <Button variant="primary" disabled={!newPostText.trim()} onClick={handleCreatePost}>
               Post
             </Button>
           </div>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ArrowLeft, ArrowRight, RotateCcw, Timer, ChevronLeft } from 'lucide-react';
 import { Card, Button, Badge } from '../components/ui';
-import { INTERVIEW_CATEGORIES, INTERVIEW_QUESTIONS } from '../data/mockData';
+import { interview } from '../services/api';
 import './InterviewPrep.css';
 
 export default function InterviewPrep() {
@@ -11,10 +11,23 @@ export default function InterviewPrep() {
   const [mockMode, setMockMode] = useState(false);
   const [timeLeft, setTimeLeft] = useState(120); // 2 minutes in seconds
   const [timerActive, setTimerActive] = useState(false);
+  
+  const [categories, setCategories] = useState([]);
+  const [questions, setQuestions] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
 
-  const questions = selectedCategory
-    ? INTERVIEW_QUESTIONS[selectedCategory.id] || []
-    : [];
+  useEffect(() => {
+    interview.getCategories()
+      .then(data => {
+        setCategories(data || []);
+        setLoadingCategories(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoadingCategories(false);
+      });
+  }, []);
 
   const currentQuestion = questions[currentIndex];
 
@@ -38,6 +51,21 @@ export default function InterviewPrep() {
     setMockMode(false);
     setTimerActive(false);
     setTimeLeft(120);
+    setLoadingQuestions(true);
+    interview.getQuestions(category.id)
+      .then(data => {
+        // Map API questionText to question expected by JSX
+        const mappedQuestions = (data || []).map(q => ({
+          ...q,
+          question: q.questionText
+        }));
+        setQuestions(mappedQuestions);
+        setLoadingQuestions(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoadingQuestions(false);
+      });
   }, []);
 
   const handleFlip = useCallback(() => {
@@ -109,7 +137,7 @@ export default function InterviewPrep() {
         </div>
 
         <div className="interview__categories">
-          {INTERVIEW_CATEGORIES.map((cat) => (
+          {loadingCategories ? <p>Loading categories...</p> : categories.map((cat) => (
             <Card
               key={cat.id}
               variant="interactive"
@@ -147,8 +175,12 @@ export default function InterviewPrep() {
         </button>
       </div>
 
-      {/* Timer bar */}
-      {mockMode && (
+      {loadingQuestions ? (
+        <div style={{ textAlign: 'center', padding: '2rem' }}>Loading questions...</div>
+      ) : (
+        <>
+          {/* Timer bar */}
+          {mockMode && (
         <div className="interview__timer-section">
           <div className="interview__timer-bar">
             <div
@@ -239,6 +271,9 @@ export default function InterviewPrep() {
           <ArrowRight size={18} />
         </Button>
       </div>
+        </>
+      )}
     </div>
   );
 }
+

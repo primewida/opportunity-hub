@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProgressBar, Button, Card } from '../components/ui';
-import { OPPORTUNITIES } from '../data/mockData';
+import { opportunities } from '../services/api';
 import { ArrowLeft, ArrowRight, Copy, Download, FileText, Check } from 'lucide-react';
 import './CoverLetterBuilder.css';
 
@@ -17,8 +17,22 @@ export default function CoverLetterBuilder() {
   const [selectedOpp, setSelectedOpp] = useState('');
   const [paragraphs, setParagraphs] = useState({ opening: '', motivation: '', qualifications: '', contribution: '', closing: '' });
   const [copied, setCopied] = useState(false);
+  const [opps, setOpps] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const opp = OPPORTUNITIES.find(o => o.id === selectedOpp);
+  useEffect(() => {
+    opportunities.getAll()
+      .then(data => {
+        setOpps(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
+
+  const opp = opps.find(o => o.id === selectedOpp);
   const totalSteps = 3;
   const canNext = step === 0 ? !!selectedOpp : step === 1 ? Object.values(paragraphs).some(p => p.trim()) : true;
 
@@ -56,7 +70,7 @@ export default function CoverLetterBuilder() {
             <p className="cover-letter__step-desc">Select the opportunity to auto-fill context and tailor your letter</p>
             <select className="input cover-letter__select" value={selectedOpp} onChange={e => setSelectedOpp(e.target.value)}>
               <option value="">Choose an opportunity...</option>
-              {OPPORTUNITIES.map(o => <option key={o.id} value={o.id}>{o.title} — {o.organization}</option>)}
+              {loading ? <option value="">Loading...</option> : opps.map(o => <option key={o.id} value={o.id}>{o.title} — {o.organization}</option>)}
             </select>
             {opp && (
               <Card variant="elevated">

@@ -1,5 +1,6 @@
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { MENTORS } from '../data/mockData';
+import { mentors } from '../services/api';
 import { Avatar, Button, Badge, Card } from '../components/ui';
 import { ArrowLeft, MapPin, Briefcase, ExternalLink, MessageSquare, Calendar } from 'lucide-react';
 import './MentorProfile.css';
@@ -16,7 +17,27 @@ const mockJourney = [
 export default function MentorProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const mentor = (MENTORS || []).find(m => m.id === id);
+  const [mentor, setMentor] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    mentors.getById(id).then(data => {
+      if (data) {
+        setMentor({
+          ...data,
+          name: data.user ? `${data.user.firstName} ${data.user.lastName}` : 'Unknown Mentor',
+          role: data.bio || data.title || 'Mentor',
+          topics: data.mentoringTopics || data.skills || []
+        });
+      }
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, [id]);
+
+  if (loading) return <div style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}><h2>Loading...</h2></div>;
 
   if (!mentor) return (
     <div style={{ textAlign: 'center', padding: 'var(--space-2xl)' }}>

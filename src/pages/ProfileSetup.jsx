@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../context/AppContext';
+import { onboarding, categories as catApi } from '../services/api';
 import { NIGERIAN_STATES, EDUCATION_LEVELS, NIGERIAN_UNIVERSITIES, NYSC_STATUSES, INTEREST_TAGS } from '../utils/constants';
 import Button from '../components/ui/Button';
 import { ProgressBar } from '../components/ui';
@@ -13,6 +14,7 @@ export default function ProfileSetup() {
   const navigate = useNavigate();
   const { completeProfile } = useApp();
   const [step, setStep] = useState(0);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({ name: '', dob: '', gender: '', education: '', state: '', location: '', institution: '', course: '', cgpa: '', jamb: '', waec: 'Completed', nysc: '', interests: [] });
   const set = (k, v) => setForm({ ...form, [k]: v });
   const toggleInterest = (tag) => set('interests', form.interests.includes(tag) ? form.interests.filter(t => t !== tag) : [...form.interests, tag]);
@@ -25,7 +27,18 @@ export default function ProfileSetup() {
     return true;
   };
 
-  const finish = () => { completeProfile(form); navigate('/', { replace: true }); };
+  const finish = async () => { 
+    setIsSubmitting(true);
+    try {
+      await onboarding.updateProfile(form);
+      await onboarding.complete();
+      completeProfile(form); 
+      navigate('/', { replace: true });
+    } catch (err) {
+      console.error('Failed to complete onboarding:', err);
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="profile-setup">
@@ -126,12 +139,14 @@ export default function ProfileSetup() {
       </div>
 
       <div className="profile-setup__actions">
-        {step > 0 && <Button variant="ghost" onClick={() => setStep(step - 1)} icon={ArrowLeft}>Back</Button>}
+        {step > 0 && <Button variant="ghost" onClick={() => setStep(step - 1)} icon={ArrowLeft} disabled={isSubmitting}>Back</Button>}
         <div style={{ flex: 1 }} />
         {step < 3 ? (
-          <Button variant="primary" onClick={() => setStep(step + 1)} disabled={!canProceed()} icon={ArrowRight}>Next</Button>
+          <Button variant="primary" onClick={() => setStep(step + 1)} disabled={!canProceed() || isSubmitting} icon={ArrowRight}>Next</Button>
         ) : (
-          <Button variant="primary" onClick={finish} disabled={!canProceed()} icon={Check}>Complete Setup</Button>
+          <Button variant="primary" onClick={finish} disabled={!canProceed() || isSubmitting} icon={Check}>
+            {isSubmitting ? 'Saving...' : 'Complete Setup'}
+          </Button>
         )}
       </div>
     </div>

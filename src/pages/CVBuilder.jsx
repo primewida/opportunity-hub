@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { CV_TEMPLATES } from '../data/mockData';
+import React, { useState, useEffect } from 'react';
+import { cv } from '../services/api';
 import { TabBar, Card, Button, Badge } from '../components/ui';
 import './CVBuilder.css';
 
@@ -23,6 +23,20 @@ const emptyReference = { name: '', title: '', email: '' };
 export default function CVBuilder() {
   const [activeTab, setActiveTab] = useState('templates');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [cvTemplates, setCvTemplates] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    cv.getTemplates()
+      .then(data => {
+        setCvTemplates(data || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
+  }, []);
 
   /* ── Builder state ── */
   const [personal, setPersonal] = useState({
@@ -74,7 +88,7 @@ export default function CVBuilder() {
   /* ── Render helpers ── */
   const renderTemplates = () => (
     <div className="cv-templates-grid">
-      {CV_TEMPLATES.map((tpl) => {
+      {loading ? <p>Loading templates...</p> : cvTemplates.map((tpl) => {
         const colors = TEMPLATE_COLORS[tpl.style] || TEMPLATE_COLORS.professional;
         return (
           <Card key={tpl.id} className="cv-template-card">

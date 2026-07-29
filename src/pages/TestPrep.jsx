@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Clock, CheckCircle, XCircle, ChevronLeft, ChevronRight, RotateCcw } from 'lucide-react';
 import { Card, Button, Badge, MatchBadge, ProgressBar } from '../components/ui';
-import { TEST_TYPES, QUIZ_QUESTIONS } from '../data/mockData';
+import { tests } from '../services/api';
 import './TestPrep.css';
 
 export default function TestPrep() {
@@ -11,9 +11,19 @@ export default function TestPrep() {
   const [answers, setAnswers] = useState({});
   const [timeLeft, setTimeLeft] = useState(0);
 
-  const questions = selectedTest
-    ? QUIZ_QUESTIONS[selectedTest.id] || []
-    : [];
+  const [testTypes, setTestTypes] = useState([]);
+  const [loadingTypes, setLoadingTypes] = useState(true);
+  const [questions, setQuestions] = useState([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [resultsData, setResultsData] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    tests.getTypes().then(data => {
+      setTestTypes(data || []);
+      setLoadingTypes(false);
+    }).catch(() => setLoadingTypes(false));
+  }, []);
 
   // Timer countdown
   useEffect(() => {
@@ -38,13 +48,20 @@ export default function TestPrep() {
     setPhase('quiz');
     setCurrentQuestion(0);
     setAnswers({});
-    const availableQuestions = QUIZ_QUESTIONS[test.id] || [];
-    // Use the smaller of test timeLimit or proportional time based on available questions
-    const totalMinutes = Math.min(
-      test.timeLimit,
-      Math.ceil((availableQuestions.length / test.questionCount) * test.timeLimit)
-    );
-    setTimeLeft(totalMinutes * 60);
+    setLoadingQuestions(true);
+
+    tests.getQuestions(test.id).then(data => {
+      const qs = data.questions || [];
+      const mappedQs = qs.map(q => ({ ...q, question: q.questionText }));
+      setQuestions(mappedQs);
+      setLoadingQuestions(false);
+
+      const totalMinutes = Math.min(
+        test.timeLimit,
+        Math.ceil((mappedQs.length / test.questionCount) * test.timeLimit)
+      );
+      setTimeLeft(totalMinutes * 60);
+    }).catch(() => setLoadingQuestions(false));
   }, []);
 
   const handleSelectAnswer = useCallback((questionIndex, optionIndex) => {
@@ -52,8 +69,19 @@ export default function TestPrep() {
   }, []);
 
   const handleSubmit = useCallback(() => {
-    setPhase('results');
-  }, []);
+    setSubmitting(true);
+    const formattedAnswers = Object.entries(answers).map(([idx, selectedAnswer]) => {
+      return { questionId: questions[idx].id, selectedAnswer };
+    });
+    tests.submit({ testTypeId: selectedTest.id, answers: formattedAnswers }).then(res => {
+      setResultsData(res);
+      setSubmitting(false);
+      setPhase('results');
+    }).catch(() => {
+      setSubmitting(false);
+      setPhase('results');
+    });
+  }, [answers, questions, selectedTest]);
 
   const handleRetry = useCallback(() => {
     if (selectedTest) {
@@ -75,17 +103,17 @@ export default function TestPrep() {
     return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
   };
 
-  // Calculate results
+  // Calculate results based on API response
   const getResults = () => {
-    let correct = 0;
-    questions.forEach((q, idx) => {
-      if (answers[idx] === q.correctAnswer) correct++;
-    });
-    return {
-      correct,
-      total: questions.length,
-      percentage: Math.round((correct / questions.length) * 100),
-    };
+    if (resultsData) {
+      return {
+        correct: resultsData.score || 0,
+        total: resultsData.total || questions.length,
+        percentage: resultsData.percentage || 0,
+        details: resultsData.results || []
+      };
+    }
+    return { correct: 0, total: questions.length, percentage: 0, details: [] };
   };
 
   // ─── Test Selection ───
@@ -100,7 +128,7 @@ export default function TestPrep() {
         </div>
 
         <div className="test-prep__grid">
-          {TEST_TYPES.map((test) => (
+          {loadingTypes ? <p>Loading test types...</p> : testTypes.map((test) => (
             <Card key={test.id} variant="elevated">
               <div className="test-prep__test-card">
                 <span className="test-prep__test-icon">{test.icon}</span>
@@ -116,9 +144,9 @@ export default function TestPrep() {
                   variant="primary"
                   size="sm"
                   onClick={() => handleStartQuiz(test)}
-                  disabled={!QUIZ_QUESTIONS[test.id]}
+                  disabled={test.questionCount === 0}
                 >
-                  {QUIZ_QUESTIONS[test.id] ? 'Start Quiz' : 'Coming Soon'}
+                  {test.questionCount > 0 ? 'Start Quiz' : 'Coming Soon'}
                 </Button>
               </div>
             </Card>
@@ -185,8 +213,9 @@ export default function TestPrep() {
           ))}
         </div>
 
-        {/* Question */}
-        {q && (
+        {loadingQuestions ? (
+          <div style={{ textAlign: 'center', padding: '2rem' }}>Loading questions...</div>
+        ) : q && (
           <div className="test-prep__question-area">
             <span className="test-prep__q-counter">
               Question {currentQuestion + 1} of {questions.length}
@@ -241,8 +270,9 @@ export default function TestPrep() {
             <Button
               variant="primary"
               onClick={handleSubmit}
+              disabled={submitting}
             >
-              Submit ({answeredCount}/{questions.length})
+              {submitting ? 'Submitting...' : `Submit (${answeredCount}/${questions.length})`}
             </Button>
           )}
         </div>
@@ -284,8 +314,10 @@ export default function TestPrep() {
         <h3 className="test-prep__review-title">Question Review</h3>
         <div className="test-prep__review">
           {questions.map((q, idx) => {
+            const resultDetail = results.details.find(d => d.questionId === q.id) || {};
             const userAnswer = answers[idx];
-            const isCorrect = userAnswer === q.correctAnswer;
+            const isCorrect = resultDetail.isCorrect;
+            const correctAnswerIdx = resultDetail.correctAnswer;
             return (
               <div
                 key={q.id}
@@ -305,9 +337,11 @@ export default function TestPrep() {
                 </div>
                 <p className="test-prep__review-question">{q.question}</p>
                 <div className="test-prep__review-answers">
-                  <span className="test-prep__review-answer test-prep__review-answer--correct">
-                    ✅ {q.options[q.correctAnswer]}
-                  </span>
+                  {correctAnswerIdx !== undefined && (
+                    <span className="test-prep__review-answer test-prep__review-answer--correct">
+                      ✅ {q.options[correctAnswerIdx]}
+                    </span>
+                  )}
                   {!isCorrect && userAnswer !== undefined && (
                     <span className="test-prep__review-answer test-prep__review-answer--wrong">
                       ❌ {q.options[userAnswer]}

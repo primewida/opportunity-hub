@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { CONVERSATIONS } from '../data/mockData';
+import { useState, useEffect } from 'react';
+import { messages } from '../services/api';
 import { Avatar } from '../components/ui';
 import { Send, ArrowLeft, Phone, MoreVertical } from 'lucide-react';
 import { getRelativeTime } from '../utils/helpers';
@@ -8,16 +8,50 @@ import './Messages.css';
 export default function Messages() {
   const [selectedConvo, setSelectedConvo] = useState(null);
   const [message, setMessage] = useState('');
-  const convos = CONVERSATIONS || [];
+  const [convos, setConvos] = useState([]);
+  const [chatMessages, setChatMessages] = useState({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    messages.getConversations().then(data => {
+      setConvos(data || []);
+      setLoading(false);
+    }).catch(err => {
+      console.error(err);
+      setLoading(false);
+    });
+  }, []);
+
   const active = convos.find(c => c.id === selectedConvo);
+  
+  const handleSelectConvo = (id) => {
+    setSelectedConvo(id);
+    if (!chatMessages[id]) {
+      messages.getMessages(id).then(msgs => {
+        setChatMessages(prev => ({ ...prev, [id]: msgs || [] }));
+      }).catch(console.error);
+    }
+  };
+
+  const handleSend = () => {
+    if (!message.trim() || !active) return;
+    const recipientId = active.participant?.id || active.id;
+    messages.send(recipientId, message).then(newMsg => {
+      setChatMessages(prev => ({
+        ...prev,
+        [selectedConvo]: [...(prev[selectedConvo] || []), newMsg]
+      }));
+      setMessage('');
+    }).catch(console.error);
+  };
 
   return (
     <div className="messages">
       <div className={`messages__list ${selectedConvo ? 'messages__list--hidden' : ''}`}>
         <h2 className="messages__list-title">Messages</h2>
-        {convos.map(c => (
+        {loading ? <p style={{padding: '1rem'}}>Loading conversations...</p> : convos.map(c => (
           <div key={c.id} className={`messages__convo ${c.unread ? 'messages__convo--unread' : ''} ${selectedConvo === c.id ? 'messages__convo--active' : ''}`}
-            onClick={() => setSelectedConvo(c.id)}>
+            onClick={() => handleSelectConvo(c.id)}>
             <Avatar name={c.name || c.participant?.name} size={44} />
             <div className="messages__convo-info">
               <div className="messages__convo-top">
@@ -45,7 +79,7 @@ export default function Messages() {
               <button className="messages__header-action"><MoreVertical size={18} /></button>
             </div>
             <div className="messages__chat-body">
-              {(active.messages || []).map((msg, i) => (
+              {(chatMessages[selectedConvo] || active.messages || []).map((msg, i) => (
                 <div key={i} className={`messages__bubble ${msg.sender === 'you' || msg.fromMe ? 'messages__bubble--sent' : 'messages__bubble--received'}`}>
                   <p className="messages__bubble-text">{msg.text || msg.content}</p>
                   <span className="messages__bubble-time">{msg.time || '12:30 PM'}</span>
@@ -54,8 +88,8 @@ export default function Messages() {
             </div>
             <div className="messages__input-bar">
               <input className="input messages__input" placeholder="Type a message..." value={message}
-                onChange={e => setMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && setMessage('')} />
-              <button className="messages__send-btn" disabled={!message.trim()}><Send size={20} /></button>
+                onChange={e => setMessage(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSend()} />
+              <button className="messages__send-btn" disabled={!message.trim()} onClick={handleSend}><Send size={20} /></button>
             </div>
           </>
         ) : (

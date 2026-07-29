@@ -1,34 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { faq } from '../services/api';
 import { Card, Accordion, SearchBar, Button } from '../components/ui';
 import { HelpCircle, MessageCircle, Mail, ExternalLink } from 'lucide-react';
 import './Help.css';
 
-const faqData = [
-  { category: 'Getting Started', items: [
-    { q: 'How do I create an account?', a: 'Tap "Get Started" on the welcome screen, then choose to sign up with your email, phone number, or Google/Apple account. You\'ll need to verify your identity via OTP.' },
-    { q: 'How does the match percentage work?', a: 'We analyze your profile (education level, field of study, location, skills, interests) against each opportunity\'s requirements. The match percentage shows how well you fit. You can also see which requirements you meet and which you still need to build.' },
-    { q: 'Is OpportunityHub free?', a: 'Yes! OpportunityHub is completely free for students. We\'re committed to making opportunities accessible to every Nigerian student.' },
-  ]},
-  { category: 'Opportunities', items: [
-    { q: 'How often are new opportunities added?', a: 'We add new opportunities daily. Enable notifications to get alerts when new opportunities matching your profile are posted.' },
-    { q: 'Can I apply directly through the app?', a: 'For most opportunities, we provide a direct link to the official application portal. Some opportunities may support in-app applications in the future.' },
-    { q: 'What types of opportunities are available?', a: 'Scholarships, grants, internships, fellowships, competitions, jobs, NYSC placements, and more — covering local and international opportunities for Nigerian students.' },
-  ]},
-  { category: 'Learning & Career Tools', items: [
-    { q: 'How do learning roadmaps work?', a: 'Roadmaps are curated step-by-step learning paths. Each includes videos, articles, quizzes, and external courses. Complete steps to track your progress and build skills.' },
-    { q: 'Can I export my CV as PDF?', a: 'Yes! Build your CV using our ATS-friendly templates, preview it in real-time, and export as a professionally formatted PDF.' },
-    { q: 'Are the test prep questions from real exams?', a: 'Our questions are modeled after real exam patterns (JAMB, Post-UTME, GRE, IELTS, etc.) but are not actual exam questions. They\'re designed to help you practice effectively.' },
-  ]},
-  { category: 'Account & Privacy', items: [
-    { q: 'How is my data protected?', a: 'All personal data is encrypted and stored securely. Documents in the vault use end-to-end encryption. We never share your data with third parties without your consent.' },
-    { q: 'Can I delete my account?', a: 'Yes. Go to Settings → Account → Delete Account. All your data will be permanently removed within 30 days.' },
-  ]},
-];
-
+// Removed inline faqData
 export default function Help() {
   const [search, setSearch] = useState('');
-  const allFaqs = faqData.flatMap(c => c.items.map(i => ({ ...i, category: c.category })));
+  const [allFaqs, setAllFaqs] = useState([]);
+  const [faqData, setFaqData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    faq.getAll().then(res => {
+      // Map API array to the format used by JSX
+      const mappedFaqs = res.map(f => ({ q: f.question, a: f.answer, category: f.category }));
+      setAllFaqs(mappedFaqs);
+
+      // Group by category for the normal view
+      const grouped = mappedFaqs.reduce((acc, curr) => {
+        if (!acc[curr.category]) acc[curr.category] = [];
+        acc[curr.category].push(curr);
+        return acc;
+      }, {});
+      
+      const structuredData = Object.keys(grouped).map(cat => ({
+        category: cat,
+        items: grouped[cat]
+      }));
+      setFaqData(structuredData);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
   const filtered = search ? allFaqs.filter(f => f.q.toLowerCase().includes(search.toLowerCase()) || f.a.toLowerCase().includes(search.toLowerCase())) : null;
+
+  if (loading) return <div className="help">Loading...</div>;
 
   return (
     <div className="help">

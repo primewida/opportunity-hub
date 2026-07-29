@@ -1,9 +1,8 @@
-import React, { useState, useMemo } from 'react';
-import { COURSES } from '../data/mockData';
+import React, { useState, useMemo, useEffect } from 'react';
+import { courses } from '../services/api';
 import { FilterChips, Card, Badge, Button, SearchBar } from '../components/ui';
 import './CourseRecommendations.css';
 
-const ALL_CATEGORIES = ['All', ...new Set(COURSES.map((c) => c.skillCategory))];
 const PRICE_OPTIONS = ['All', 'Free', 'Paid'];
 const SORT_OPTIONS = [
   { value: 'popular', label: 'Most Popular' },
@@ -32,8 +31,24 @@ export default function CourseRecommendations() {
   const [priceFilter, setPriceFilter] = useState('All');
   const [sort, setSort] = useState('popular');
 
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    courses.getAll().then(res => {
+      setData(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
+
+  const ALL_CATEGORIES = useMemo(() => ['All', ...new Set(data.map((c) => c.skillCategory))], [data]);
+
   const filteredCourses = useMemo(() => {
-    let list = [...COURSES];
+    let list = [...data];
 
     /* search */
     if (search.trim()) {
@@ -41,8 +56,8 @@ export default function CourseRecommendations() {
       list = list.filter(
         (c) =>
           c.title.toLowerCase().includes(q) ||
-          c.provider.toLowerCase().includes(q) ||
-          c.skillCategory.toLowerCase().includes(q)
+          (c.provider && c.provider.toLowerCase().includes(q)) ||
+          (c.skillCategory && c.skillCategory.toLowerCase().includes(q))
       );
     }
 
@@ -60,13 +75,16 @@ export default function CourseRecommendations() {
 
     /* sort */
     if (sort === 'popular') {
-      list.sort((a, b) => b.enrolledCount - a.enrolledCount);
+      list.sort((a, b) => (b.enrolledCount || 0) - (a.enrolledCount || 0));
     } else if (sort === 'rating') {
-      list.sort((a, b) => b.rating - a.rating);
+      list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
     }
 
     return list;
-  }, [search, category, priceFilter, sort]);
+  }, [search, category, priceFilter, sort, data]);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading courses...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="courses-page">
@@ -147,9 +165,9 @@ export default function CourseRecommendations() {
             <p className="course-card__desc">{course.description}</p>
 
             <div className="course-card__meta">
-              <StarRating rating={course.rating} />
+              <StarRating rating={course.rating || 0} />
               <span className="course-card__enrolled">
-                👥 {course.enrolledCount.toLocaleString()} enrolled
+                👥 {course.enrolledCount?.toLocaleString() || 0} enrolled
               </span>
             </div>
 

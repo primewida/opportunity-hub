@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../context/AppContext';
-import { OPPORTUNITIES } from '../data/mockData';
+import { opportunities } from '../services/api';
 import { Card, Badge, Button, EmptyState } from '../components/ui';
 import { Bookmark, Clock, MapPin, Trash2 } from 'lucide-react';
 import { daysUntilDeadline, getDeadlineColor } from '../utils/helpers';
@@ -9,8 +10,23 @@ import './SavedOpportunities.css';
 export default function SavedOpportunities() {
   const navigate = useNavigate();
   const app = useApp();
-  const savedIds = app.savedOpportunities || [];
-  const saved = OPPORTUNITIES.filter(o => savedIds.includes(o.id));
+  
+  const [saved, setSaved] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    opportunities.getSaved().then(res => {
+      setSaved(res.data || res);
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading saved opportunities...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="saved">
@@ -40,7 +56,11 @@ export default function SavedOpportunities() {
                       <Badge variant="success">{opp.matchPercentage || 85}% Match</Badge>
                     </div>
                   </div>
-                  <button className="saved__remove" onClick={e => { e.stopPropagation(); app.dispatch({ type: 'TOGGLE_SAVED', payload: opp.id }); }} title="Remove">
+                  <button className="saved__remove" onClick={e => { 
+                    e.stopPropagation(); 
+                    app.dispatch({ type: 'TOGGLE_SAVED', payload: opp.id });
+                    setSaved(prev => prev.filter(o => o.id !== opp.id));
+                  }} title="Remove">
                     <Trash2 size={16} />
                   </button>
                 </div>

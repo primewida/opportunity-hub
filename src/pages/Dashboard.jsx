@@ -1,21 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Flame, ChevronRight, TrendingUp, ClipboardList, Sparkles, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card, OpportunityCard, ProgressBar, FilterChips } from '../components/ui';
 import { getGreeting } from '../utils/helpers';
-import { OPPORTUNITIES, LEARNING_ROADMAPS, COMMUNITY_POSTS } from '../data/mockData';
+import { dashboard, opportunities, roadmaps, community } from '../services/api';
 import './Dashboard.css';
 
 export default function Dashboard() {
   const navigate = useNavigate();
   const app = useApp();
   const [feedFilter, setFeedFilter] = useState('All');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  const [dashboardData, setDashboardData] = useState({
+    topMatches: [],
+    activeRoadmap: null,
+    feedOpps: [],
+    communityPosts: [],
+    stats: null
+  });
+
+  useEffect(() => {
+    Promise.all([
+      opportunities.getFeed(),
+      roadmaps.getAll(),
+      community.getTrending(),
+      dashboard.get()
+    ]).then(([feedRes, roadmapsRes, commRes, dashRes]) => {
+      const opps = feedRes.data || feedRes;
+      const roads = roadmapsRes.data || roadmapsRes;
+      const posts = commRes.data || commRes;
+      
+      setDashboardData({
+        topMatches: [...opps].sort((a, b) => b.matchPercentage - a.matchPercentage).slice(0, 6),
+        activeRoadmap: roads.find(r => r.progress > 0 && r.progress < 100),
+        feedOpps: opps,
+        communityPosts: posts,
+        stats: dashRes.stats
+      });
+      setLoading(false);
+    }).catch(err => {
+      setError(err);
+      setLoading(false);
+    });
+  }, []);
+
   const userName = app.user?.firstName || app.user?.name?.split(' ')[0] || 'Student';
-  const topMatches = [...OPPORTUNITIES].sort((a, b) => b.matchPercentage - a.matchPercentage).slice(0, 6);
-  const activeRoadmap = LEARNING_ROADMAPS.find(r => r.progress > 0 && r.progress < 100);
   const feedTypes = ['All', 'Scholarships', 'Jobs', 'Internships'];
-  const feedOpps = OPPORTUNITIES.filter(o => feedFilter === 'All' || o.type === feedFilter.slice(0, -1) || o.type === feedFilter);
+  
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
+  if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error loading dashboard: {error.message}</div>;
+
+  const { topMatches, activeRoadmap, feedOpps, communityPosts, stats } = dashboardData;
+  const filteredFeed = feedOpps.filter(o => feedFilter === 'All' || o.type === feedFilter.slice(0, -1) || o.type === feedFilter);
 
   return (
     <div className="dashboard">
@@ -24,7 +63,7 @@ export default function Dashboard() {
         <div className="dashboard__streak-card">
           <div className="dashboard__streak-icon"><Flame size={28} /></div>
           <div className="dashboard__streak-info">
-            <span className="dashboard__streak-count">{app.streakData?.currentStreak || 12} day streak 🔥</span>
+            <span className="dashboard__streak-count">{app.streakData?.currentStreak || stats?.streakDays || 12} day streak 🔥</span>
             <span className="dashboard__streak-text">You're on fire! Keep it up.</span>
           </div>
           <button className="dashboard__streak-btn" onClick={() => navigate('/streak')}><ChevronRight size={18} /></button>
@@ -70,9 +109,9 @@ export default function Dashboard() {
         </div>
         <div className="dashboard__stats-grid">
           {[
-            { icon: TrendingUp, num: '23', label: 'New Matches', color: 'var(--color-primary)' },
-            { icon: ClipboardList, num: '5', label: 'Applications', color: 'var(--color-accent-teal)' },
-            { icon: Flame, num: `${app.streakData?.currentStreak || 12}`, label: 'Day Streak', color: 'var(--color-accent-amber)' },
+            { icon: TrendingUp, num: stats?.matchedOpportunities || '23', label: 'New Matches', color: 'var(--color-primary)' },
+            { icon: ClipboardList, num: stats?.applications || '5', label: 'Applications', color: 'var(--color-accent-teal)' },
+            { icon: Flame, num: `${app.streakData?.currentStreak || stats?.streakDays || 12}`, label: 'Day Streak', color: 'var(--color-accent-amber)' },
           ].map((s, i) => (
             <div key={i} className="dashboard__stat-card" style={{ borderLeftColor: s.color }}>
               <s.icon size={20} style={{ color: s.color }} />
@@ -88,13 +127,13 @@ export default function Dashboard() {
           <h2 className="dashboard__section-title"><MessageSquare size={18} /> Community Buzz</h2>
           <button className="dashboard__see-all" onClick={() => navigate('/community')}>See all <ChevronRight size={14} /></button>
         </div>
-        {COMMUNITY_POSTS.slice(0, 3).map(post => (
+        {communityPosts.slice(0, 3).map(post => (
           <div key={post.id} className="dashboard__community-post" onClick={() => navigate('/community')}>
-            <div className="dashboard__post-avatar">{post.author.initials}</div>
+            <div className="dashboard__post-avatar">{post.author?.initials || 'A'}</div>
             <div className="dashboard__post-content">
-              <span className="dashboard__post-author">{post.author.name}</span>
-              <p className="dashboard__post-text">{post.content.slice(0, 120)}...</p>
-              <span className="dashboard__post-meta">👍 {post.upvotes} · 💬 {post.commentCount}</span>
+              <span className="dashboard__post-author">{post.author?.name || 'Anonymous'}</span>
+              <p className="dashboard__post-text">{post.content?.slice(0, 120)}...</p>
+              <span className="dashboard__post-meta">👍 {post.upvotes || 0} · 💬 {post.commentCount || 0}</span>
             </div>
           </div>
         ))}
@@ -106,7 +145,7 @@ export default function Dashboard() {
         </div>
         <FilterChips options={feedTypes} selected={feedFilter} onChange={setFeedFilter} />
         <div className="dashboard__feed">
-          {feedOpps.slice(0, 5).map(opp => (
+          {filteredFeed.slice(0, 5).map(opp => (
             <OpportunityCard key={opp.id} opportunity={opp} onClick={() => navigate(`/opportunity/${opp.id}`)}
               onBookmark={() => app.toggleSave(opp.id)} />
           ))}
