@@ -356,6 +356,139 @@ for (const c of courses) {
 }
 console.log(`  ✅ ${courses.length} courses seeded`);
 
+  // ── 12. Interview Prep ──────────────────────────────
+  const interviewCategories = [
+    { name: 'Behavioral', icon: '🧠', questionCount: 5 },
+    { name: 'Technical', icon: '💻', questionCount: 5 },
+    { name: 'Scholarship', icon: '🎓', questionCount: 5 },
+  ];
+
+  for (const cat of interviewCategories) {
+    const createdCat = await prisma.interviewCategory.create({ data: cat });
+    
+    let questions = [];
+    if (cat.name === 'Behavioral') {
+      questions = [
+        { questionText: 'Tell me about yourself', tips: 'Keep it professional and concise.', sampleAnswer: 'I am a software engineer...', pitfalls: 'Rambling about personal life' },
+        { questionText: 'Describe a challenging situation you overcame', tips: 'Use the STAR method.', sampleAnswer: 'In my last project...', pitfalls: 'Blaming others' },
+        { questionText: 'Where do you see yourself in 5 years?', tips: 'Align with the company goals.', sampleAnswer: 'I see myself leading a team...', pitfalls: 'Being unrealistic' }
+      ];
+    } else if (cat.name === 'Technical') {
+      questions = [
+        { questionText: 'Explain the concept of RESTful APIs', tips: 'Mention HTTP methods.', sampleAnswer: 'REST is an architectural style...', pitfalls: 'Confusing it with SOAP' },
+        { questionText: 'What is the difference between SQL and NoSQL?', tips: 'Discuss relational vs non-relational.', sampleAnswer: 'SQL is relational...', pitfalls: 'Saying one is always better' },
+        { questionText: 'Explain Big O notation', tips: 'Define it simply.', sampleAnswer: 'It describes algorithm efficiency...', pitfalls: 'Getting too mathematical' }
+      ];
+    } else if (cat.name === 'Scholarship') {
+      questions = [
+        { questionText: 'Why do you deserve this scholarship?', tips: 'Highlight your achievements and need.', sampleAnswer: 'I have maintained a high GPA...', pitfalls: 'Sounding entitled' },
+        { questionText: 'How will this scholarship impact your career?', tips: 'Be specific about your goals.', sampleAnswer: 'It will allow me to focus on studies...', pitfalls: 'Vague answers' },
+        { questionText: 'What are your leadership experiences?', tips: 'Mention specific roles.', sampleAnswer: 'I led the computer club...', pitfalls: 'Exaggerating roles' }
+      ];
+    }
+
+    for (const q of questions) {
+      await prisma.interviewQuestion.create({
+        data: {
+          ...q,
+          categoryId: createdCat.id
+        }
+      });
+    }
+  }
+  console.log(`  ✅ Interview categories and questions seeded`);
+
+  // ── 13. Test Prep ───────────────────────────────────
+  const testTypes = [
+    { name: 'JAMB Practice', description: 'Practice for UTME', questionCount: 5, timeLimit: 10, icon: '📝' },
+    { name: 'Aptitude Test', description: 'General aptitude assessment', questionCount: 5, timeLimit: 8, icon: '🧮' },
+  ];
+
+  for (const t of testTypes) {
+    const createdType = await prisma.testType.create({ data: t });
+    
+    let tQuestions = [];
+    if (t.name === 'JAMB Practice') {
+      tQuestions = [
+        { questionText: 'What is the capital of Nigeria?', options: JSON.stringify(['Lagos', 'Abuja', 'Kano', 'Port Harcourt']), correctAnswer: 1, explanation: 'Abuja is the capital city.', subject: 'General' },
+        { questionText: 'Solve for x: 2x = 4', options: JSON.stringify(['1', '2', '3', '4']), correctAnswer: 1, explanation: 'x = 4/2 = 2', subject: 'Math' },
+        { questionText: 'Choose the correct spelling:', options: JSON.stringify(['Acomodation', 'Accommodation', 'Accomodation', 'Acommodation']), correctAnswer: 1, explanation: 'Two cs and two ms.', subject: 'English' }
+      ];
+    } else if (t.name === 'Aptitude Test') {
+      tQuestions = [
+        { questionText: 'If all bloops are razzies and all razzies are lazzies, are all bloops lazzies?', options: JSON.stringify(['Yes', 'No', 'Maybe', 'Cannot be determined']), correctAnswer: 0, explanation: 'Transitive property of logic.', subject: 'Logic' },
+        { questionText: 'What comes next in the sequence: 2, 4, 8, 16, ?', options: JSON.stringify(['24', '32', '64', '128']), correctAnswer: 1, explanation: 'Multiply by 2.', subject: 'Logic' },
+        { questionText: 'A bat and a ball cost $1.10 in total. The bat costs $1.00 more than the ball. How much does the ball cost?', options: JSON.stringify(['$0.05', '$0.10', '$0.15', '$0.20']), correctAnswer: 0, explanation: 'x + (x + 1) = 1.10 -> 2x = 0.10 -> x = 0.05', subject: 'Logic' }
+      ];
+    }
+
+    for (const tq of tQuestions) {
+      await prisma.testQuestion.create({
+        data: {
+          ...tq,
+          testTypeId: createdType.id
+        }
+      });
+    }
+  }
+  console.log(`  ✅ Test types and questions seeded`);
+
+  // ── 12. Community & Mentors Seed Data ────────────────────────
+  const groups = [
+    { name: 'Scholarship Hunters Nigeria', description: 'Find and share scholarship opportunities', icon: '🎯', groupType: 'Public', createdById: testUser.id },
+    { name: 'Tech Career Path', description: 'Discuss tech career strategies', icon: '💻', groupType: 'Public', createdById: testUser.id },
+    { name: 'NYSC Corps Members', description: 'Connect with fellow corps members', icon: '🇳🇬', groupType: 'Public', createdById: testUser.id }
+  ];
+
+  for (const g of groups) {
+    const group = await prisma.communityGroup.create({ data: g });
+    await prisma.groupMember.create({
+      data: { groupId: group.id, userId: testUser.id }
+    });
+    
+    if (g.name === 'Scholarship Hunters Nigeria') {
+      await prisma.post.createMany({
+        data: [
+          { groupId: group.id, userId: testUser.id, content: 'Just got the Chevening Scholarship notification! Application window opens next month. Who else is applying?' },
+          { groupId: group.id, userId: testUser.id, content: 'Tips for writing scholarship essays: Be specific, use real examples, and always connect to your future goals.' }
+        ]
+      });
+    }
+  }
+  console.log(`  ✅ Community groups and posts seeded`);
+
+  const mentorUsers = [
+    { email: 'mentor1@example.com', firstName: 'Emeka', lastName: 'Obi', educationLevel: 'Masters', institutionName: 'MIT' },
+    { email: 'mentor2@example.com', firstName: 'Fatima', lastName: 'Abubakar', educationLevel: 'PhD', institutionName: 'Oxford' }
+  ];
+  
+  const mentorsData = [
+    { bio: 'Software Engineer at Google...', mentoringTopics: '["Software Engineering","Interview Prep"]', availability: 'Weekends', rating: 4.8, isVerified: true },
+    { bio: 'Chevening Scholar, Research Fellow...', mentoringTopics: '["Scholarship Applications","Research"]', availability: 'Evenings', rating: 4.9, isVerified: true }
+  ];
+
+  for (let i = 0; i < mentorUsers.length; i++) {
+    const mu = mentorUsers[i];
+    const user = await prisma.user.upsert({
+      where: { email: mu.email },
+      update: {},
+      create: {
+        ...mu,
+        passwordHash,
+        onboardingCompleted: true
+      }
+    });
+    await prisma.mentor.upsert({
+      where: { id: user.id },
+      update: {},
+      create: {
+        id: user.id,
+        ...mentorsData[i]
+      }
+    });
+  }
+  console.log(`  ✅ Mentors seeded`);
+
   console.log('\n🎉 Database seeded successfully!\n');
   console.log('  Test login credentials:');
   console.log('  📧 Email: student@opportunityhub.ng');

@@ -11,6 +11,13 @@ import jobRoutes from './routes/job.routes.js';
 import roadmapRoutes from './routes/roadmap.routes.js';
 import courseRoutes from './routes/course.routes.js';
 import skillRoutes from './routes/skill.routes.js';
+import communityRoutes from './routes/community.routes.js';
+import mentorRoutes from './routes/mentor.routes.js';
+import messageRoutes from './routes/message.routes.js';
+import cvRoutes from './routes/cv.routes.js';
+import coverLetterRoutes from './routes/coverLetter.routes.js';
+import interviewRoutes from './routes/interview.routes.js';
+import testRoutes from './routes/test.routes.js';
 
 const app = express();
 
@@ -40,6 +47,13 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/roadmaps', roadmapRoutes);
 app.use('/api/courses', courseRoutes);
 app.use('/api/skills', skillRoutes);
+app.use('/api/community', communityRoutes);
+app.use('/api/mentors', mentorRoutes);
+app.use('/api/messages', messageRoutes);
+app.use('/api/cv', cvRoutes);
+app.use('/api/cover-letter', coverLetterRoutes);
+app.use('/api/interview', interviewRoutes);
+app.use('/api/tests', testRoutes);
 
 // 404 handler
 app.use((req, res) => {
