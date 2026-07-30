@@ -45,16 +45,27 @@ export default function OpportunityCard({
   const {
     title,
     organization,
-    tags = [],
+    provider,
+    tags: rawTags,
     matchPercentage,
     deadline,
     bookmarked = false,
     id
   } = opportunity || {};
 
+  const org = organization || provider || '';
+  // Tags come as JSON string from backend, or array from mock data
+  const tags = useMemo(() => {
+    if (Array.isArray(rawTags)) return rawTags;
+    if (typeof rawTags === 'string') {
+      try { const parsed = JSON.parse(rawTags); return Array.isArray(parsed) ? parsed : []; } catch { return []; }
+    }
+    return [];
+  }, [rawTags]);
+
   const deadlineInfo = useMemo(() => getDeadlineInfo(deadline), [deadline]);
-  const logoColor = useMemo(() => getLogoColor(organization), [organization]);
-  const initial = (organization || '?')[0].toUpperCase();
+  const logoColor = useMemo(() => getLogoColor(org), [org]);
+  const initial = (org || '?')[0].toUpperCase();
 
   return (
     <article
@@ -70,7 +81,7 @@ export default function OpportunityCard({
 
       <div className="opportunity-card__content">
         <h3 className="opportunity-card__title line-clamp-2">{title}</h3>
-        <p className="opportunity-card__org text-secondary">{organization}</p>
+        <p className="opportunity-card__org text-secondary">{org}</p>
         {tags.length > 0 && (
           <div className="opportunity-card__tags">
             {tags.slice(0, compact ? 2 : 4).map((tag) => (
