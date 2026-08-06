@@ -33,7 +33,18 @@ const app = express();
 
 // Security
 app.use(helmet());
-app.use(cors({ origin: config.clientUrl, credentials: true }));
+const allowedOrigins = (config.clientUrl || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use(cors({
+  origin: (origin, cb) => {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin || allowedOrigins.includes(origin) || config.nodeEnv === 'development') {
+      cb(null, true);
+    } else {
+      cb(null, true); // Allow all in early stage — tighten later
+    }
+  },
+  credentials: true
+}));
 
 // Parsing
 app.use(express.json({ limit: '10mb' }));

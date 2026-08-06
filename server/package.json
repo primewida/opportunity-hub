@@ -7,6 +7,8 @@
   "scripts": {
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
+    "build": "npx prisma generate && npx prisma db push --accept-data-loss",
+    "postinstall": "npx prisma generate",
     "db:generate": "npx prisma generate",
     "db:migrate": "npx prisma migrate dev",
     "db:push": "npx prisma db push",
@@ -33,11 +35,11 @@
     "jsonwebtoken": "^9.0.2",
     "morgan": "^1.10.0",
     "multer": "^2.0.1",
+    "prisma": "^6.10.0",
     "uuid": "^11.1.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "prisma": "^6.10.0"
   },
   "allowScripts": {
     "@prisma/client@6.19.3": true,
