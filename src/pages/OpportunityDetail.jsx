@@ -22,7 +22,35 @@ export default function OpportunityDetail() {
 
   useEffect(() => {
     opportunities.getById(id).then(res => {
-      setOpp(res.data || res);
+      const raw = res.data || res;
+      // Parse JSON string fields from backend into arrays
+      const parseJSON = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+        }
+        return [];
+      };
+      const parseSteps = (val) => {
+        if (Array.isArray(val)) return val;
+        if (typeof val === 'string') {
+          // Could be JSON array or separator-delimited string
+          try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; } catch { return val.split(/[→\u001a]/).map(s => s.trim()).filter(Boolean); }
+        }
+        return [];
+      };
+      // Map backend field names to what JSX expects
+      setOpp({
+        ...raw,
+        type: raw.type || raw.opportunityType || '',
+        organization: raw.organization || raw.provider || '',
+        requirements: parseJSON(raw.requirements || raw.eligibilityCriteria),
+        requiredDocuments: parseJSON(raw.requiredDocuments),
+        applicationSteps: parseSteps(raw.applicationSteps),
+        benefits: parseJSON(raw.benefits),
+        tags: parseJSON(raw.tags),
+        matchReasons: raw.matchReasons || [],
+      });
       setLoading(false);
     }).catch(err => {
       setError(err);
