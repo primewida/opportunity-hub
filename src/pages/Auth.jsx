@@ -37,17 +37,23 @@ export default function Auth() {
     if (method === 'phone' && !otpSent) { setOtpSent(true); setTimer(30); return; }
     setLoading(true);
     try {
+      let profile;
       if (method === 'phone') {
-        // Phone OTP still simulated — just log in as test user
-        await login('student@opportunityhub.ng', 'password123');
+        // Phone OTP simulated — log in as default student
+        profile = await login('student@opportunityhub.ng', 'password123');
       } else if (mode === 'login') {
-        await login(email, password);
+        profile = await login(email, password);
       } else {
         const [firstName, ...rest] = name.split(' ');
         const lastName = rest.join(' ') || firstName;
-        await register({ email, password, firstName, lastName });
+        profile = await register({ email, password, firstName, lastName });
       }
-      navigate('/profile-setup', { replace: true });
+
+      if (profile?.onboardingCompleted) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/profile-setup', { replace: true });
+      }
     } catch (err) {
       setError(err.message || 'Authentication failed');
     } finally {
@@ -59,7 +65,6 @@ export default function Auth() {
     setLoading(true);
     setError('');
     try {
-      // In production or preview, prompt or use Google profile
       const email = prompt('Enter your Google Account email to continue:', 'user@gmail.com');
       if (!email) {
         setLoading(false);
@@ -67,8 +72,12 @@ export default function Auth() {
       }
       const [firstName, ...rest] = (email.split('@')[0] || 'Google User').split('.');
       const lastName = rest.join(' ') || 'Scholar';
-      await app.googleLogin({ email, firstName, lastName });
-      navigate('/profile-setup', { replace: true });
+      const profile = await app.googleLogin({ email, firstName, lastName });
+      if (profile?.onboardingCompleted) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/profile-setup', { replace: true });
+      }
     } catch (err) {
       setError(err.message || 'Google authentication failed');
     } finally {
@@ -85,8 +94,12 @@ export default function Auth() {
         setLoading(false);
         return;
       }
-      await app.appleLogin({ email, firstName: 'Apple', lastName: 'Scholar' });
-      navigate('/profile-setup', { replace: true });
+      const profile = await app.appleLogin({ email, firstName: 'Apple', lastName: 'Scholar' });
+      if (profile?.onboardingCompleted) {
+        navigate('/', { replace: true });
+      } else {
+        navigate('/profile-setup', { replace: true });
+      }
     } catch (err) {
       setError(err.message || 'Apple authentication failed');
     } finally {

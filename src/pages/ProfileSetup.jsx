@@ -18,15 +18,32 @@ const GENDER_OPTIONS = [
 
 export default function ProfileSetup() {
   const navigate = useNavigate();
-  const { completeProfile } = useApp();
+  const app = useApp();
+  const { completeProfile } = app;
   const [step, setStep] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [form, setForm] = useState({ name: '', dob: '', gender: '', education: '', state: '', location: '', institution: '', course: '', cgpa: '', jamb: '', waec: 'Completed', nysc: '', interests: [] });
-  const set = (k, v) => setForm({ ...form, [k]: v });
+  
+  const [form, setForm] = useState(() => ({
+    name: app.user ? `${app.user.firstName || ''} ${app.user.lastName || ''}`.trim() : '',
+    dob: app.user?.dateOfBirth ? new Date(app.user.dateOfBirth).toISOString().split('T')[0] : '',
+    gender: app.user?.gender || '',
+    education: app.user?.educationLevel || '',
+    state: app.user?.stateOfOrigin || app.user?.currentState || '',
+    location: app.user?.currentCity || '',
+    institution: app.user?.institutionName || '',
+    course: app.user?.courseOfStudy || '',
+    cgpa: app.user?.cgpa !== undefined && app.user?.cgpa !== null ? String(app.user.cgpa) : '',
+    jamb: app.user?.jambScore !== undefined && app.user?.jambScore !== null ? String(app.user.jambScore) : '',
+    waec: app.user?.waecStatus || 'Completed',
+    nysc: app.user?.nyscStatus || '',
+    interests: Array.isArray(app.user?.interests) ? app.user.interests.map(i => i.name || i) : []
+  }));
+
+  const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const toggleInterest = (tag) => set('interests', form.interests.includes(tag) ? form.interests.filter(t => t !== tag) : [...form.interests, tag]);
 
   const canProceed = () => {
-    if (step === 0) return form.name && form.dob && form.gender;
+    if (step === 0) return form.name && form.gender;
     if (step === 1) return form.education;
     if (step === 2) return form.state;
     if (step === 3) return form.interests.length >= 3;
@@ -36,7 +53,6 @@ export default function ProfileSetup() {
   const finish = async () => { 
     setIsSubmitting(true);
     try {
-      // Map frontend form fields to backend schema field names
       const [firstName, ...rest] = (form.name || '').split(' ');
       const lastName = rest.join(' ') || firstName;
       const profileData = {
@@ -50,17 +66,21 @@ export default function ProfileSetup() {
         currentCity: form.location || undefined,
         institutionName: form.institution || undefined,
         courseOfStudy: form.course || undefined,
-        cgpa: form.cgpa || undefined,
-        jambScore: form.jamb || undefined,
+        cgpa: form.cgpa ? parseFloat(form.cgpa) : undefined,
+        jambScore: form.jamb ? parseInt(form.jamb) : undefined,
         waecStatus: form.waec || undefined,
         nyscStatus: form.nysc || undefined,
+        onboardingCompleted: true
       };
-      await onboarding.updateProfile(profileData).catch(() => {});
+
+      await onboarding.updateProfile(profileData).catch(e => console.warn('Profile update warning:', e));
+      if (form.interests && form.interests.length > 0) {
+        await onboarding.setInterests(form.interests).catch(() => {});
+      }
       await onboarding.complete().catch(() => {});
     } catch (err) {
-      console.error('Onboarding API error (non-blocking):', err);
+      console.error('Onboarding API error:', err);
     }
-    // Always navigate — context update still works locally
     completeProfile(form); 
     navigate('/', { replace: true });
   };

@@ -5,20 +5,21 @@ export const updateProfileSchema = z.object({
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   dateOfBirth: z.string().optional(),
-  gender: z.enum([...GENDERS]).optional(),
+  gender: z.string().optional(),
   educationLevel: z.string().optional(),
   institutionName: z.string().optional(),
   courseOfStudy: z.string().optional(),
-  stateOfOrigin: z.enum([...NIGERIAN_STATES]).optional(),
+  stateOfOrigin: z.string().optional(),
   currentState: z.string().optional(),
   currentCity: z.string().optional(),
-  jambScore: z.number().optional(),
+  jambScore: z.coerce.number().optional(),
   waecStatus: z.string().optional(),
-  cgpa: z.number().min(0).max(5).optional(),
+  cgpa: z.coerce.number().min(0).max(5).optional(),
   nyscStatus: z.string().optional(),
   bio: z.string().optional(),
   careerGoals: z.string().optional(),
-  phoneNumber: z.string().optional()
+  phoneNumber: z.string().optional(),
+  onboardingCompleted: z.boolean().optional()
 }).partial();
 
 export const profileSetupSchema = z.object({

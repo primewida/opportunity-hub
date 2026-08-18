@@ -6,13 +6,29 @@ export const getMe = async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
-        interests: true,
-        skills: true
+        userInterests: {
+          include: { category: true }
+        },
+        userSkills: {
+          include: { skill: true }
+        }
       }
     });
-    // Never expose passwordHash
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const { passwordHash, ...safeUser } = user;
-    res.json(safeUser);
+    const formattedInterests = (safeUser.userInterests || []).map(ui => ui.category?.name).filter(Boolean);
+    const formattedSkills = (safeUser.userSkills || []).map(us => ({
+      id: us.skillId,
+      name: us.skill?.name,
+      proficiencyLevel: us.proficiencyLevel
+    }));
+    res.json({
+      ...safeUser,
+      interests: formattedInterests,
+      skills: formattedSkills
+    });
   } catch (error) {
     next(error);
   }
@@ -20,11 +36,28 @@ export const getMe = async (req, res, next) => {
 
 export const updateMe = async (req, res, next) => {
   try {
+    const data = { ...req.body };
+    if (data.dateOfBirth) {
+      const parsedDate = new Date(data.dateOfBirth);
+      if (!isNaN(parsedDate.getTime())) {
+        data.dateOfBirth = parsedDate;
+      } else {
+        delete data.dateOfBirth;
+      }
+    }
+    if (data.cgpa !== undefined && data.cgpa !== null && data.cgpa !== '') {
+      data.cgpa = parseFloat(data.cgpa);
+    }
+    if (data.jambScore !== undefined && data.jambScore !== null && data.jambScore !== '') {
+      data.jambScore = parseInt(data.jambScore);
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
-      data: req.body
+      data
     });
-    res.json(updatedUser);
+    const { passwordHash, ...safeUser } = updatedUser;
+    res.json(safeUser);
   } catch (error) {
     next(error);
   }
@@ -61,7 +94,8 @@ export const completeOnboarding = async (req, res, next) => {
       where: { id: req.user.id },
       data: { onboardingCompleted: true }
     });
-    res.json(user);
+    const { passwordHash, ...safeUser } = user;
+    res.json(safeUser);
   } catch (error) {
     next(error);
   }
@@ -70,8 +104,8 @@ export const completeOnboarding = async (req, res, next) => {
 export const profileSetup = async (req, res, next) => {
   try {
     const { firstName, lastName, educationLevel, institutionName, courseOfStudy, stateOfOrigin, interests, skills } = req.body;
-    
-    const user = await prisma.user.update({
+
+    const updatedUser = await prisma.user.update({
       where: { id: req.user.id },
       data: {
         firstName,
@@ -80,27 +114,42 @@ export const profileSetup = async (req, res, next) => {
         institutionName,
         courseOfStudy,
         stateOfOrigin,
-        onboardingCompleted: true,
-        ...(interests && {
-          interests: {
-            deleteMany: {},
-            create: interests.map(name => ({ name }))
-          }
-        }),
-        ...(skills && {
-          skills: {
-            deleteMany: {},
-            create: skills.map(skill => ({ name: skill.name, proficiencyLevel: skill.proficiencyLevel }))
-          }
-        })
-      },
-      include: {
-        interests: true,
-        skills: true
+        onboardingCompleted: true
       }
     });
 
-    res.json(user);
+    if (skills && Array.isArray(skills)) {
+      for (const s of skills) {
+        const skill = await prisma.skill.upsert({
+          where: { name: s.name },
+          update: {},
+          create: { name: s.name }
+        });
+        await prisma.userSkill.upsert({
+          where: { userId_skillId: { userId: req.user.id, skillId: skill.id } },
+          update: { proficiencyLevel: s.proficiencyLevel || 3 },
+          create: { userId: req.user.id, skillId: skill.id, proficiencyLevel: s.proficiencyLevel || 3 }
+        });
+      }
+    }
+
+    if (interests && Array.isArray(interests)) {
+      for (const intName of interests) {
+        const cat = await prisma.category.upsert({
+          where: { name: intName },
+          update: {},
+          create: { name: intName }
+        });
+        await prisma.userInterest.upsert({
+          where: { userId_categoryId: { userId: req.user.id, categoryId: cat.id } },
+          update: {},
+          create: { userId: req.user.id, categoryId: cat.id }
+        });
+      }
+    }
+
+    const { passwordHash, ...safeUser } = updatedUser;
+    res.json(safeUser);
   } catch (error) {
     next(error);
   }
@@ -108,10 +157,16 @@ export const profileSetup = async (req, res, next) => {
 
 export const getUserSkills = async (req, res, next) => {
   try {
-    const skills = await prisma.skill.findMany({
-      where: { userId: req.user.id }
+    const userSkills = await prisma.userSkill.findMany({
+      where: { userId: req.user.id },
+      include: { skill: true }
     });
-    res.json(skills);
+    const formatted = userSkills.map(us => ({
+      id: us.skillId,
+      name: us.skill.name,
+      proficiencyLevel: us.proficiencyLevel
+    }));
+    res.json(formatted);
   } catch (error) {
     next(error);
   }
@@ -120,16 +175,30 @@ export const getUserSkills = async (req, res, next) => {
 export const updateUserSkills = async (req, res, next) => {
   try {
     const { skills } = req.body;
+    await prisma.userSkill.deleteMany({ where: { userId: req.user.id } });
     
-    await prisma.$transaction([
-      prisma.skill.deleteMany({ where: { userId: req.user.id } }),
-      prisma.skill.createMany({
-        data: skills.map(s => ({ ...s, userId: req.user.id }))
-      })
-    ]);
+    if (skills && Array.isArray(skills)) {
+      for (const s of skills) {
+        const skill = await prisma.skill.upsert({
+          where: { name: s.name },
+          update: {},
+          create: { name: s.name }
+        });
+        await prisma.userSkill.create({
+          data: {
+            userId: req.user.id,
+            skillId: skill.id,
+            proficiencyLevel: s.proficiencyLevel || 3
+          }
+        });
+      }
+    }
 
-    const updatedSkills = await prisma.skill.findMany({ where: { userId: req.user.id } });
-    res.json(updatedSkills);
+    const updated = await prisma.userSkill.findMany({
+      where: { userId: req.user.id },
+      include: { skill: true }
+    });
+    res.json(updated.map(us => ({ id: us.skillId, name: us.skill.name, proficiencyLevel: us.proficiencyLevel })));
   } catch (error) {
     next(error);
   }
@@ -137,10 +206,11 @@ export const updateUserSkills = async (req, res, next) => {
 
 export const getUserInterests = async (req, res, next) => {
   try {
-    const interests = await prisma.interest.findMany({
-      where: { userId: req.user.id }
+    const userInterests = await prisma.userInterest.findMany({
+      where: { userId: req.user.id },
+      include: { category: true }
     });
-    res.json(interests);
+    res.json(userInterests.map(ui => ui.category.name));
   } catch (error) {
     next(error);
   }
@@ -149,16 +219,29 @@ export const getUserInterests = async (req, res, next) => {
 export const updateUserInterests = async (req, res, next) => {
   try {
     const { interests } = req.body;
+    await prisma.userInterest.deleteMany({ where: { userId: req.user.id } });
     
-    await prisma.$transaction([
-      prisma.interest.deleteMany({ where: { userId: req.user.id } }),
-      prisma.interest.createMany({
-        data: interests.map(name => ({ name, userId: req.user.id }))
-      })
-    ]);
+    if (interests && Array.isArray(interests)) {
+      for (const intName of interests) {
+        const cat = await prisma.category.upsert({
+          where: { name: intName },
+          update: {},
+          create: { name: intName }
+        });
+        await prisma.userInterest.create({
+          data: {
+            userId: req.user.id,
+            categoryId: cat.id
+          }
+        });
+      }
+    }
 
-    const updatedInterests = await prisma.interest.findMany({ where: { userId: req.user.id } });
-    res.json(updatedInterests);
+    const updated = await prisma.userInterest.findMany({
+      where: { userId: req.user.id },
+      include: { category: true }
+    });
+    res.json(updated.map(ui => ui.category.name));
   } catch (error) {
     next(error);
   }

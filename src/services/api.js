@@ -214,11 +214,11 @@ export const faq = {
 
 /* ── Onboarding ── */
 export const onboarding = {
-  getStatus: () => get('/onboarding/status'),
-  complete: () => post('/onboarding/complete'),
-  updateProfile: (data) => put('/onboarding/profile', data),
-  setInterests: (categoryIds) => put('/onboarding/interests', { categoryIds }),
-  setSkills: (skills) => put('/onboarding/skills', { skills }),
+  getStatus: () => get('/users/me'),
+  complete: () => post('/users/me/complete-onboarding'),
+  updateProfile: (data) => put('/users/me', data),
+  setInterests: (interests) => post('/users/me/interests', { interests }),
+  setSkills: (skills) => post('/users/me/skills', { skills }),
 };
 
 /* ── Dashboard ── */
