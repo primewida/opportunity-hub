@@ -208,6 +208,22 @@ export function AppProvider({ children }) {
     return profile;
   }, []);
 
+  const googleLogin = useCallback(async (payload) => {
+    const res = await api.auth.googleLogin(payload);
+    api.setToken(res.token);
+    const profile = await api.users.getProfile();
+    dispatch({ type: ActionTypes.LOGIN, payload: profile });
+    return profile;
+  }, []);
+
+  const appleLogin = useCallback(async (payload) => {
+    const res = await api.auth.appleLogin(payload);
+    api.setToken(res.token);
+    const profile = await api.users.getProfile();
+    dispatch({ type: ActionTypes.LOGIN, payload: profile });
+    return profile;
+  }, []);
+
   const logout = useCallback(() => {
     api.clearToken();
     dispatch({ type: ActionTypes.LOGOUT });
@@ -298,6 +314,8 @@ export function AppProvider({ children }) {
     authLoading,
     login,
     register,
+    googleLogin,
+    appleLogin,
     logout,
     updateProfile,
     completeOnboarding,

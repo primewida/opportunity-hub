@@ -191,3 +191,17 @@ export const getSavedOpportunities = async (req, res, next) => {
     next(error);
   }
 };
+
+export const triggerScraper = async (req, res, next) => {
+  try {
+    const { scrapeLiveFeeds } = await import('../services/scraper.service.js');
+    const results = await scrapeLiveFeeds();
+    res.json({
+      message: `Successfully synchronized ${results.length} live opportunities from web feeds`,
+      count: results.length,
+      data: results
+    });
+  } catch (error) {
+    next(error);
+  }
+};

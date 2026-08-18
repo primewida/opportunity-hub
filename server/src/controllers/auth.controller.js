@@ -113,3 +113,108 @@ export const resetPassword = async (req, res, next) => {
     }
   }
 };
+
+export const googleAuth = async (req, res, next) => {
+  try {
+    const { credential, email: directEmail, firstName: directFirstName, lastName: directLastName, picture } = req.body;
+    
+    let email = directEmail;
+    let firstName = directFirstName || 'Google';
+    let lastName = directLastName || 'User';
+    let avatar = picture;
+
+    // Decode Google ID token if provided
+    if (credential) {
+      try {
+        const decoded = jwt.decode(credential);
+        if (decoded && decoded.email) {
+          email = decoded.email;
+          firstName = decoded.given_name || firstName;
+          lastName = decoded.family_name || lastName;
+          avatar = decoded.picture || avatar;
+        }
+      } catch (e) {
+        console.warn('Google token decode warning:', e);
+      }
+    }
+
+    if (!email) {
+      throw new UnauthorizedError('Google authentication failed: Email is required');
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const defaultPassword = await hashPassword(`google_${Date.now()}_${Math.random()}`);
+      user = await prisma.user.create({
+        data: {
+          email,
+          firstName,
+          lastName,
+          passwordHash: defaultPassword,
+          educationLevel: 'Undergraduate',
+          profilePictureUrl: avatar || null,
+          onboardingCompleted: false
+        }
+      });
+    }
+
+    const token = generateToken(user.id);
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        educationLevel: user.educationLevel,
+        onboardingCompleted: user.onboardingCompleted
+      },
+      token
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const appleAuth = async (req, res, next) => {
+  try {
+    const { email, firstName = 'Apple', lastName = 'User' } = req.body;
+
+    if (!email) {
+      throw new UnauthorizedError('Apple authentication failed: Email is required');
+    }
+
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (!user) {
+      const defaultPassword = await hashPassword(`apple_${Date.now()}_${Math.random()}`);
+      user = await prisma.user.create({
+        data: {
+          email,
+          firstName,
+          lastName,
+          passwordHash: defaultPassword,
+          educationLevel: 'Undergraduate',
+          onboardingCompleted: false
+        }
+      });
+    }
+
+    const token = generateToken(user.id);
+
+    res.json({
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        educationLevel: user.educationLevel,
+        onboardingCompleted: user.onboardingCompleted
+      },
+      token
+    });
+  } catch (error) {
+    next(error);
+  }
+};

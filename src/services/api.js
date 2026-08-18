@@ -47,6 +47,8 @@ function del(endpoint) { return request(endpoint, { method: 'DELETE' }); }
 export const auth = {
   login: (email, password) => post('/auth/login', { email, password }),
   register: (data) => post('/auth/register', data),
+  googleLogin: (payload) => post('/auth/google', payload),
+  appleLogin: (payload) => post('/auth/apple', payload),
 };
 
 /* ── Users ── */
@@ -66,6 +68,7 @@ export const opportunities = {
   save: (id) => post(`/opportunities/${id}/save`),
   unsave: (id) => del(`/opportunities/${id}/unsave`),
   getSaved: () => get('/opportunities/saved'),
+  syncScraped: () => post('/opportunities/scrape', {}),
 };
 
 /* ── Jobs ── */

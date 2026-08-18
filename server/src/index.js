@@ -5,6 +5,16 @@ const server = app.listen(config.port, () => {
   console.log(`\n🚀 OpportunityHub API running on http://localhost:${config.port}`);
   console.log(`📋 Health check: http://localhost:${config.port}/api/health`);
   console.log(`🔧 Environment: ${config.nodeEnv}\n`);
+
+  // Asynchronously synchronize live opportunities in the background
+  setTimeout(async () => {
+    try {
+      const { scrapeLiveFeeds } = await import('./services/scraper.service.js');
+      await scrapeLiveFeeds();
+    } catch (err) {
+      console.warn('Background web scraping notice:', err.message);
+    }
+  }, 2000);
 });
 
 // Graceful shutdown

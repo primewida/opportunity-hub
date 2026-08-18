@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
-import { SlidersHorizontal, Grid3X3, List, X, Search } from 'lucide-react';
+import { SlidersHorizontal, Grid3X3, List, X, Search, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OpportunityCard, FilterChips, SearchBar, Button, Modal, EmptyState } from '../components/ui';
 import { opportunities } from '../services/api';
@@ -19,9 +19,11 @@ export default function BrowseOpportunities() {
 
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [scraping, setScraping] = useState(false);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
+  const fetchOpportunities = () => {
+    setLoading(true);
     opportunities.getAll().then(res => {
       const raw = res.data || res;
       const normalized = Array.isArray(raw) ? raw.map(o => ({
@@ -35,7 +37,24 @@ export default function BrowseOpportunities() {
       setError(err);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    fetchOpportunities();
   }, []);
+
+  const handleSyncScraped = async () => {
+    setScraping(true);
+    try {
+      await opportunities.syncScraped();
+      fetchOpportunities();
+    } catch (e) {
+      console.warn('Scraper sync notice:', e);
+      fetchOpportunities();
+    } finally {
+      setScraping(false);
+    }
+  };
 
   const chipOptions = ['All', ...OPPORTUNITY_TYPES];
 
@@ -96,6 +115,15 @@ export default function BrowseOpportunities() {
               <option value="deadline">Deadline (Soonest)</option>
               <option value="newest">Newest</option>
             </select>
+            <button 
+              className={`btn btn-icon btn-ghost ${scraping ? 'animate-spin' : ''}`} 
+              onClick={handleSyncScraped} 
+              aria-label="Sync Live Opportunities"
+              title="Scrape and sync latest web opportunities"
+              disabled={scraping}
+            >
+              <RefreshCw size={18} />
+            </button>
             <button className={`btn btn-icon btn-ghost ${showFilters ? 'active' : ''}`} onClick={() => setShowFilters(true)} aria-label="Filters">
               <SlidersHorizontal size={18} />
             </button>
@@ -103,7 +131,10 @@ export default function BrowseOpportunities() {
             <button className={`btn btn-icon btn-ghost ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} aria-label="List view"><List size={18} /></button>
           </div>
         </div>
-        <p className="browse__results-count">Showing {filtered.length} opportunities</p>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'var(--space-xs)' }}>
+          <p className="browse__results-count" style={{ margin: 0 }}>Showing {filtered.length} opportunities</p>
+          {scraping && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>🔄 Scraping live feeds...</span>}
+        </div>
       </div>
 
       {filtered.length === 0 ? (

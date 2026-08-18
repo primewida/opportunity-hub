@@ -188,14 +188,25 @@ export default function RoadmapDetail() {
                   : 'Follow the guided instructions above to complete this step.'}
               </p>
               {activeStep.contentUrl && (
-                <Button 
-                  variant="primary" 
-                  icon={ExternalLink} 
-                  onClick={handleOpenResource}
-                  style={{ width: '100%', justifyContent: 'center' }}
+                <a
+                  href={activeStep.contentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    justifyContent: 'center',
+                    textDecoration: 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '12px 20px',
+                    fontWeight: 600
+                  }}
                 >
+                  <ExternalLink size={18} />
                   {activeStep.type === 'video' ? 'Watch Tutorial on YouTube' : 'Open Learning Resource'}
-                </Button>
+                </a>
               )}
             </div>
 

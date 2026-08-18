@@ -82,6 +82,8 @@ export default function OpportunityDetail() {
     else alert('Application link not available yet. Check back later.');
   };
 
+  const applyUrl = opp.applicationLink || opp.applyUrl || opp.sourceUrl || '#';
+
   // Soften bright banner colors for better dark mode readability
   const bannerBg = opp.bannerColor
     ? `linear-gradient(135deg, ${opp.bannerColor}88, ${opp.bannerColor}44)`
@@ -92,7 +94,15 @@ export default function OpportunityDetail() {
       {/* Sticky Header */}
       <div className={`detail__sticky ${showSticky ? 'detail__sticky--visible' : ''}`}>
         <h3 className="detail__sticky-title">{opp.title}</h3>
-        <Button variant="primary" size="sm" icon={ExternalLink} onClick={handleApply}>Apply Now</Button>
+        <a 
+          href={applyUrl} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="btn btn-primary btn-sm"
+          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <ExternalLink size={14} /> Apply Now
+        </a>
       </div>
 
       {/* Hero */}
@@ -232,7 +242,15 @@ export default function OpportunityDetail() {
           {isSaved ? <BookmarkCheck size={22} style={{ color: 'var(--color-primary)' }} /> : <Bookmark size={22} />}
         </button>
         <button className="detail__footer-btn" aria-label="Share"><Share2 size={22} /></button>
-        <Button variant="primary" size="lg" icon={ExternalLink} fullWidth onClick={handleApply}>Apply Now</Button>
+        <a 
+          href={applyUrl} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="btn btn-primary btn-lg"
+          style={{ flex: 1, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
+          <ExternalLink size={20} /> Apply Now
+        </a>
       </div>
     </div>
   );

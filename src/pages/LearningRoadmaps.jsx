@@ -18,7 +18,16 @@ export default function LearningRoadmaps() {
 
   useEffect(() => {
     roadmaps.getAll().then(res => {
-      setData(res.data || res);
+      const raw = res.data || res;
+      // Deduplicate by title or id
+      const seen = new Set();
+      const unique = (Array.isArray(raw) ? raw : []).filter(r => {
+        const key = r.title || r.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      setData(unique);
       setLoading(false);
     }).catch(err => {
       setError(err);

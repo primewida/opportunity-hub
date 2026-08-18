@@ -10,6 +10,12 @@ import './ProfileSetup.css';
 
 const steps = ['Basic Info', 'Education', 'Details', 'Interests'];
 
+const GENDER_OPTIONS = [
+  { value: 'Male', label: 'Male', icon: '👨' },
+  { value: 'Female', label: 'Female', icon: '👩' },
+  { value: 'Prefer not to say', label: 'Prefer not to say', icon: '✨' },
+];
+
 export default function ProfileSetup() {
   const navigate = useNavigate();
   const { completeProfile } = useApp();
@@ -61,28 +67,41 @@ export default function ProfileSetup() {
 
   return (
     <div className="profile-setup">
-      <div className="profile-setup__progress">
-        <div className="profile-setup__steps-label">
-          <span className="profile-setup__step-num">Step {step + 1} of {steps.length}</span>
+      <div className="profile-setup__progress-card">
+        <div className="profile-setup__steps-header">
+          <span className="profile-setup__step-badge">Step {step + 1} of {steps.length}</span>
           <span className="profile-setup__step-name">{steps[step]}</span>
         </div>
-        <ProgressBar progress={((step + 1) / steps.length) * 100} />
+        <ProgressBar progress={((step + 1) / steps.length) * 100} size="sm" />
       </div>
 
       <div className="profile-setup__content">
         {step === 0 && (
           <div className="profile-setup__step animate-fadeInUp" key="s0">
             <h2 className="profile-setup__title">Let's get to know you 👋</h2>
-            <p className="profile-setup__desc">Tell us a bit about yourself</p>
+            <p className="profile-setup__desc">Tell us a bit about yourself to customize your opportunities</p>
             <div className="profile-setup__fields">
-              <div className="input-group"><label className="profile-setup__label">Full Name</label><input className="input" placeholder="e.g. Adaeze Okafor" value={form.name} onChange={e => set('name', e.target.value)} /></div>
-              <div className="input-group"><label className="profile-setup__label">Date of Birth</label><input className="input" type="date" value={form.dob} onChange={e => set('dob', e.target.value)} /></div>
-              <div className="input-group"><label className="profile-setup__label">Gender</label>
-                <div className="profile-setup__radios">
-                  {['Male', 'Female', 'Prefer not to say'].map(g => (
-                    <label key={g} className={`profile-setup__radio ${form.gender === g ? 'active' : ''}`}>
-                      <input type="radio" name="gender" value={g} checked={form.gender === g} onChange={() => set('gender', g)} />{g}
-                    </label>
+              <div className="input-group">
+                <label className="profile-setup__label">Full Name</label>
+                <input className="input" placeholder="e.g. Adaeze Okafor" value={form.name} onChange={e => set('name', e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label className="profile-setup__label">Date of Birth</label>
+                <input className="input" type="date" value={form.dob} onChange={e => set('dob', e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label className="profile-setup__label">Gender</label>
+                <div className="profile-setup__gender-grid">
+                  {GENDER_OPTIONS.map(g => (
+                    <button
+                      key={g.value}
+                      type="button"
+                      className={`profile-setup__gender-card ${form.gender === g.value ? 'profile-setup__gender-card--active' : ''}`}
+                      onClick={() => set('gender', g.value)}
+                    >
+                      <span className="profile-setup__gender-icon">{g.icon}</span>
+                      <span className="profile-setup__gender-text">{g.label}</span>
+                    </button>
                   ))}
                 </div>
               </div>
