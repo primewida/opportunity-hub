@@ -76,16 +76,27 @@ export default function OpportunityDetail() {
   const metReasons = opp.matchReasons?.filter(r => r.met) || [];
   const missingReasons = opp.matchReasons?.filter(r => !r.met) || [];
 
+  const handleApply = () => {
+    const url = opp.applicationLink || opp.applyUrl || opp.sourceUrl;
+    if (url) window.open(url, '_blank', 'noopener');
+    else alert('Application link not available yet. Check back later.');
+  };
+
+  // Soften bright banner colors for better dark mode readability
+  const bannerBg = opp.bannerColor
+    ? `linear-gradient(135deg, ${opp.bannerColor}88, ${opp.bannerColor}44)`
+    : 'var(--gradient-primary)';
+
   return (
     <div className="detail">
       {/* Sticky Header */}
       <div className={`detail__sticky ${showSticky ? 'detail__sticky--visible' : ''}`}>
         <h3 className="detail__sticky-title">{opp.title}</h3>
-        <Button variant="primary" size="sm" icon={ExternalLink}>Apply Now</Button>
+        <Button variant="primary" size="sm" icon={ExternalLink} onClick={handleApply}>Apply Now</Button>
       </div>
 
       {/* Hero */}
-      <div className="detail__hero" ref={heroRef} style={{ background: opp.bannerColor || 'var(--gradient-primary)' }}>
+      <div className="detail__hero" ref={heroRef} style={{ background: bannerBg }}>
         <button className="detail__back" onClick={() => navigate(-1)} aria-label="Go back"><ArrowLeft size={20} /></button>
         <div className="detail__hero-content">
           <Badge variant="primary">{opp.type}</Badge>
@@ -221,7 +232,7 @@ export default function OpportunityDetail() {
           {isSaved ? <BookmarkCheck size={22} style={{ color: 'var(--color-primary)' }} /> : <Bookmark size={22} />}
         </button>
         <button className="detail__footer-btn" aria-label="Share"><Share2 size={22} /></button>
-        <Button variant="primary" size="lg" icon={ExternalLink} fullWidth>Apply Now</Button>
+        <Button variant="primary" size="lg" icon={ExternalLink} fullWidth onClick={handleApply}>Apply Now</Button>
       </div>
     </div>
   );

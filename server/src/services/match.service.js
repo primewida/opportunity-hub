@@ -103,6 +103,29 @@ export const calculateMatchPercentage = (user, opportunity) => {
   score += 5;
   matchDetails.nyscMet = true;
 
+  // 8. Gender eligibility check — heavy penalty if gender-specific and doesn't match
+  const titleLower = (opportunity.title || '').toLowerCase();
+  const descLower = (opportunity.description || '').toLowerCase();
+  const genderKeywords = {
+    female: ['women', 'female', 'girls', 'she code', 'women in tech', 'girl'],
+    male: ['men only', 'male only', 'boys only']
+  };
+
+  const requiredGender = eligibility.gender || eligibility.required_gender || null;
+  const isFemaleFocused = genderKeywords.female.some(kw => titleLower.includes(kw) || descLower.includes(kw));
+  const isMaleFocused = genderKeywords.male.some(kw => titleLower.includes(kw) || descLower.includes(kw));
+
+  if (user.gender) {
+    const userGender = user.gender.toLowerCase();
+    if (requiredGender && requiredGender.toLowerCase() !== userGender) {
+      score = Math.max(0, score - 60); // Heavy penalty
+    } else if (isFemaleFocused && userGender !== 'female') {
+      score = Math.max(0, score - 50); // Strong penalty for gender-specific opps
+    } else if (isMaleFocused && userGender !== 'male') {
+      score = Math.max(0, score - 50);
+    }
+  }
+
   return {
     scorePercentage: Math.round(Math.min(100, Math.max(0, score))),
     matchDetails
