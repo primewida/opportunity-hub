@@ -6,10 +6,10 @@ export const getMe = async (req, res, next) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
-        userInterests: {
+        interests: {
           include: { category: true }
         },
-        userSkills: {
+        skills: {
           include: { skill: true }
         }
       }
@@ -18,8 +18,8 @@ export const getMe = async (req, res, next) => {
       return res.status(404).json({ error: 'User not found' });
     }
     const { passwordHash, ...safeUser } = user;
-    const formattedInterests = (safeUser.userInterests || []).map(ui => ui.category?.name).filter(Boolean);
-    const formattedSkills = (safeUser.userSkills || []).map(us => ({
+    const formattedInterests = (safeUser.interests || []).map(ui => ui.category?.name).filter(Boolean);
+    const formattedSkills = (safeUser.skills || []).map(us => ({
       id: us.skillId,
       name: us.skill?.name,
       proficiencyLevel: us.proficiencyLevel
