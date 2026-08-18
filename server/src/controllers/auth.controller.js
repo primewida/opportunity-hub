@@ -33,7 +33,8 @@ export const register = async (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        educationLevel: user.educationLevel
+        educationLevel: user.educationLevel,
+        onboardingCompleted: user.onboardingCompleted
       },
       token
     });
@@ -64,7 +65,8 @@ export const login = async (req, res, next) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        educationLevel: user.educationLevel
+        educationLevel: user.educationLevel,
+        onboardingCompleted: user.onboardingCompleted
       },
       token
     });
