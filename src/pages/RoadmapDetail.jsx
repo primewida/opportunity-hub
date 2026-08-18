@@ -24,7 +24,17 @@ export default function RoadmapDetail() {
     roadmaps.getById(id).then(res => {
       const data = res.data || res;
       setRoadmap(data);
-      setSteps(data.steps || []);
+      const rawSteps = data.steps || [];
+      const normalizedSteps = rawSteps.map((s, i) => ({
+        ...s,
+        id: s.id || `step-${i}`,
+        type: (s.stepType || s.type || 'article').toLowerCase(),
+        duration: s.estimatedDurationMinutes ? `${s.estimatedDurationMinutes} mins` : (s.duration || '30 mins'),
+        contentUrl: s.contentUrl || s.resourceUrl || null,
+        completed: Boolean(s.completed),
+        locked: i === 0 ? false : Boolean(s.locked),
+      }));
+      setSteps(normalizedSteps);
       setLoading(false);
     }).catch(err => {
       setError(err);
@@ -86,6 +96,12 @@ export default function RoadmapDetail() {
   };
 
   const StepIcon = activeStep ? (typeIcons[activeStep.type] || FileText) : FileText;
+
+  const handleOpenResource = () => {
+    if (activeStep?.contentUrl) {
+      window.open(activeStep.contentUrl, '_blank', 'noopener,noreferrer');
+    }
+  };
 
   return (
     <div className="roadmap-detail">
@@ -159,20 +175,31 @@ export default function RoadmapDetail() {
             </div>
             <p className="roadmap-detail__modal-desc">{activeStep.description}</p>
 
-            <div className="roadmap-detail__modal-sim">
-              <div className="roadmap-detail__modal-sim-icon">
-                <StepIcon size={32} strokeWidth={1.5} />
+            <div className="roadmap-detail__modal-sim" style={{ padding: 'var(--space-lg)', textAlign: 'center', background: 'var(--bg-surface-elevated, var(--bg-secondary))', borderRadius: 'var(--radius-md)', margin: 'var(--space-md) 0' }}>
+              <div className="roadmap-detail__modal-sim-icon" style={{ marginBottom: 'var(--space-sm)' }}>
+                <StepIcon size={36} strokeWidth={1.5} style={{ color: 'var(--color-primary)' }} />
               </div>
-              <p>Content would load here in the full application.</p>
-              <span className="roadmap-detail__modal-sim-label">
-                {activeStep.type === 'video' && '▶ Video Player'}
-                {activeStep.type === 'article' && '📄 Article Reader'}
-                {activeStep.type === 'quiz' && '✍️ Quiz Interface'}
-                {activeStep.type === 'external' && '🔗 External Link'}
-              </span>
+              <h4 style={{ margin: '0 0 var(--space-xs)', fontSize: 'var(--text-base)', color: 'var(--text-primary)' }}>
+                {activeStep.title}
+              </h4>
+              <p style={{ fontSize: 'var(--text-footnote)', color: 'var(--text-secondary)', margin: '0 0 var(--space-md)' }}>
+                {activeStep.contentUrl 
+                  ? 'Access the comprehensive tutorial / resource for this step:' 
+                  : 'Follow the guided instructions above to complete this step.'}
+              </p>
+              {activeStep.contentUrl && (
+                <Button 
+                  variant="primary" 
+                  icon={ExternalLink} 
+                  onClick={handleOpenResource}
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
+                  {activeStep.type === 'video' ? 'Watch Tutorial on YouTube' : 'Open Learning Resource'}
+                </Button>
+              )}
             </div>
 
-            <div className="roadmap-detail__modal-actions">
+            <div className="roadmap-detail__modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: 'var(--space-sm)', marginTop: 'var(--space-md)' }}>
               {activeStep.completed ? (
                 <Badge variant="success">✓ Completed</Badge>
               ) : (

@@ -23,7 +23,13 @@ export default function BrowseOpportunities() {
 
   useEffect(() => {
     opportunities.getAll().then(res => {
-      setData(res.data || res);
+      const raw = res.data || res;
+      const normalized = Array.isArray(raw) ? raw.map(o => ({
+        ...o,
+        type: o.type || o.opportunityType || '',
+        organization: o.organization || o.provider || '',
+      })) : [];
+      setData(normalized);
       setLoading(false);
     }).catch(err => {
       setError(err);
@@ -37,15 +43,28 @@ export default function BrowseOpportunities() {
     let result = [...data];
     if (search) {
       const q = search.toLowerCase();
-      result = result.filter(o => o.title.toLowerCase().includes(q) || (o.organization && o.organization.toLowerCase().includes(q)));
+      result = result.filter(o => 
+        (o.title && o.title.toLowerCase().includes(q)) || 
+        (o.organization && o.organization.toLowerCase().includes(q)) ||
+        (o.provider && o.provider.toLowerCase().includes(q)) ||
+        (o.description && o.description.toLowerCase().includes(q))
+      );
     }
-    if (typeFilter !== 'All') result = result.filter(o => o.type === typeFilter);
-    if (filters.types.length) result = result.filter(o => filters.types.includes(o.type));
-    if (filters.education) result = result.filter(o => o.educationLevel?.toLowerCase() === filters.education);
-    if (filters.minMatch > 0) result = result.filter(o => o.matchPercentage >= filters.minMatch);
+    if (typeFilter !== 'All') {
+      result = result.filter(o => (o.type || o.opportunityType) === typeFilter);
+    }
+    if (filters.types.length) {
+      result = result.filter(o => filters.types.includes(o.type || o.opportunityType));
+    }
+    if (filters.education) {
+      result = result.filter(o => o.educationLevel?.toLowerCase() === filters.education.toLowerCase());
+    }
+    if (filters.minMatch > 0) {
+      result = result.filter(o => (o.matchPercentage || 0) >= filters.minMatch);
+    }
     if (filters.location !== 'Any') {
-      if (filters.location === 'Nigeria') result = result.filter(o => o.location === 'Nigeria');
-      else if (filters.location === 'Global') result = result.filter(o => o.location !== 'Nigeria');
+      if (filters.location === 'Nigeria') result = result.filter(o => (o.location || '').toLowerCase().includes('nigeria'));
+      else if (filters.location === 'Global') result = result.filter(o => !(o.location || '').toLowerCase().includes('nigeria'));
     }
     if (filters.deadline === '7days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 7 && d >= 0; });
     if (filters.deadline === '30days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 30 && d >= 0; });

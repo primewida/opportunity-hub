@@ -29,16 +29,21 @@ export default function Dashboard() {
       community.getTrending(),
       dashboard.get()
     ]).then(([feedRes, roadmapsRes, commRes, dashRes]) => {
-      const opps = feedRes.data || feedRes;
+      const rawOpps = feedRes.data || feedRes;
+      const opps = Array.isArray(rawOpps) ? rawOpps.map(o => ({
+        ...o,
+        type: o.type || o.opportunityType || '',
+        organization: o.organization || o.provider || '',
+      })) : [];
       const roads = roadmapsRes.data || roadmapsRes;
       const posts = commRes.data || commRes;
       
       setDashboardData({
-        topMatches: [...opps].sort((a, b) => b.matchPercentage - a.matchPercentage).slice(0, 6),
-        activeRoadmap: roads.find(r => r.progress > 0 && r.progress < 100),
+        topMatches: [...opps].sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0)).slice(0, 6),
+        activeRoadmap: Array.isArray(roads) ? roads.find(r => r.progress > 0 && r.progress < 100) : null,
         feedOpps: opps,
-        communityPosts: posts,
-        stats: dashRes.stats
+        communityPosts: Array.isArray(posts) ? posts : [],
+        stats: dashRes?.stats || null
       });
       setLoading(false);
     }).catch(err => {
@@ -48,13 +53,18 @@ export default function Dashboard() {
   }, []);
 
   const userName = app.user?.firstName || app.user?.name?.split(' ')[0] || 'Student';
-  const feedTypes = ['All', 'Scholarships', 'Jobs', 'Internships'];
+  const feedTypes = ['All', 'Scholarships', 'Jobs', 'Internships', 'Training'];
   
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
   if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error loading dashboard: {error.message}</div>;
 
   const { topMatches, activeRoadmap, feedOpps, communityPosts, stats } = dashboardData;
-  const filteredFeed = feedOpps.filter(o => feedFilter === 'All' || o.type === feedFilter.slice(0, -1) || o.type === feedFilter);
+  const filteredFeed = feedOpps.filter(o => {
+    if (feedFilter === 'All') return true;
+    const oppType = (o.type || o.opportunityType || '').toLowerCase();
+    const filterLower = feedFilter.toLowerCase();
+    return oppType.includes(filterLower) || filterLower.includes(oppType) || (filterLower.endsWith('s') && oppType.includes(filterLower.slice(0, -1)));
+  });
 
   return (
     <div className="dashboard">

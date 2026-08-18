@@ -47,7 +47,7 @@ export default function Profile() {
     ]},
     { title: 'Account', items: [
       { icon: Lock, label: 'Change Password', action: () => {} },
-      { icon: LogOut, label: 'Sign Out', danger: true, action: () => {} },
+      { icon: LogOut, label: 'Sign Out', danger: true, action: () => { app.logout(); window.location.href = '/auth'; } },
     ]},
   ];
 
