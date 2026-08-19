@@ -18,6 +18,7 @@ export default function Dashboard() {
     topMatches: [],
     activeRoadmap: null,
     feedOpps: [],
+    jobList: [],
     communityPosts: [],
     stats: null
   });
@@ -25,16 +26,29 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       opportunities.getFeed(),
-      roadmaps.getAll(),
-      community.getTrending(),
-      dashboard.get()
-    ]).then(([feedRes, roadmapsRes, commRes, dashRes]) => {
+      jobs.getAll().catch(() => ({ data: [] })),
+      roadmaps.getAll().catch(() => ({ data: [] })),
+      community.getTrending().catch(() => ({ data: [] })),
+      dashboard.get().catch(() => null)
+    ]).then(([feedRes, jobsRes, roadmapsRes, commRes, dashRes]) => {
       const rawOpps = feedRes.data || feedRes;
       const opps = Array.isArray(rawOpps) ? rawOpps.map(o => ({
         ...o,
         type: o.type || o.opportunityType || '',
         organization: o.organization || o.provider || '',
       })) : [];
+
+      const rawJobs = jobsRes.data || jobsRes;
+      const loadedJobs = (Array.isArray(rawJobs) ? rawJobs : []).map(j => ({
+        ...j,
+        company: j.companyName || j.company || 'Tech Company',
+        type: j.jobType || j.type || 'Full-time',
+        location: j.location || 'Remote',
+        salary: j.salaryRange || j.salary,
+        deadline: j.applicationDeadline || j.deadline,
+        applyUrl: j.applyUrl || j.applicationLink || '#'
+      }));
+
       const roads = roadmapsRes.data || roadmapsRes;
       const posts = commRes.data || commRes;
       
@@ -42,6 +56,7 @@ export default function Dashboard() {
         topMatches: [...opps].sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0)).slice(0, 6),
         activeRoadmap: Array.isArray(roads) ? roads.find(r => r.progress > 0 && r.progress < 100) : null,
         feedOpps: opps,
+        jobList: loadedJobs,
         communityPosts: Array.isArray(posts) ? posts : [],
         stats: dashRes?.stats || null
       });
@@ -58,12 +73,15 @@ export default function Dashboard() {
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
   if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error loading dashboard: {error.message}</div>;
 
-  const { topMatches, activeRoadmap, feedOpps, communityPosts, stats } = dashboardData;
+  const { topMatches, activeRoadmap, feedOpps, jobList, communityPosts, stats } = dashboardData;
+  
   const filteredFeed = feedOpps.filter(o => {
     if (feedFilter === 'All') return true;
     const oppType = (o.type || o.opportunityType || '').toLowerCase();
-    const filterLower = feedFilter.toLowerCase();
-    return oppType.includes(filterLower) || filterLower.includes(oppType) || (filterLower.endsWith('s') && oppType.includes(filterLower.slice(0, -1)));
+    if (feedFilter === 'Scholarships') return oppType.includes('scholarship');
+    if (feedFilter === 'Internships') return oppType.includes('intern');
+    if (feedFilter === 'Training') return oppType.includes('train') || oppType.includes('bootcamp');
+    return false;
   });
 
   return (
@@ -73,24 +91,21 @@ export default function Dashboard() {
         <div className="dashboard__streak-card">
           <div className="dashboard__streak-icon"><Flame size={28} /></div>
           <div className="dashboard__streak-info">
-            <span className="dashboard__streak-count">{app.streakData?.currentStreak || stats?.streakDays || 12} day streak 🔥</span>
-            <span className="dashboard__streak-text">You're on fire! Keep it up.</span>
+            <span className="dashboard__streak-count">{app.streakData?.currentStreak || 12} Day Streak</span>
+            <span className="dashboard__streak-label">Keep your streak burning! 🔥</span>
           </div>
-          <button className="dashboard__streak-btn" onClick={() => navigate('/streak')}><ChevronRight size={18} /></button>
         </div>
       </div>
 
       <section className="dashboard__section">
         <div className="dashboard__section-header">
-          <h2 className="dashboard__section-title"><Sparkles size={18} /> Top Matches for You</h2>
+          <h2 className="dashboard__section-title">🎯 Top Recommendations For You</h2>
           <button className="dashboard__see-all" onClick={() => navigate('/discover')}>See all <ChevronRight size={14} /></button>
         </div>
-        <div className="dashboard__scroll-row">
+        <div className="dashboard__matches-scroll">
           {topMatches.map(opp => (
-            <div key={opp.id} className="dashboard__scroll-item">
-              <OpportunityCard opportunity={opp} onClick={() => navigate(`/opportunity/${opp.id}`)}
-                onBookmark={() => app.toggleSave(opp.id)} compact />
-            </div>
+            <OpportunityCard key={opp.id} opportunity={opp} onClick={() => navigate(`/opportunity/${opp.id}`)}
+              onBookmark={() => app.toggleSave(opp.id)} />
           ))}
         </div>
       </section>
@@ -98,14 +113,15 @@ export default function Dashboard() {
       {activeRoadmap && (
         <section className="dashboard__section">
           <div className="dashboard__section-header">
-            <h2 className="dashboard__section-title">📚 Continue Learning</h2>
+            <h2 className="dashboard__section-title">📖 Continue Learning</h2>
           </div>
           <Card variant="interactive" onClick={() => navigate(`/learn/${activeRoadmap.id}`)}>
-            <div className="card-body" style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)' }}>
-              <span style={{ fontSize: 32 }}>{activeRoadmap.icon}</span>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ margin: '0 0 4px', fontSize: 'var(--text-sm)', fontFamily: 'var(--font-heading)', fontWeight: 600 }}>{activeRoadmap.title}</h3>
-                <ProgressBar progress={activeRoadmap.progress} showPercentage size="sm" />
+            <div className="card-body dashboard__roadmap-card">
+              <div className="dashboard__roadmap-icon">{activeRoadmap.icon || '📚'}</div>
+              <div className="dashboard__roadmap-info">
+                <span className="badge badge-primary">{activeRoadmap.category}</span>
+                <h3 className="dashboard__roadmap-title">{activeRoadmap.title}</h3>
+                <ProgressBar progress={activeRoadmap.progress || 35} size="sm" />
               </div>
               <button className="btn btn-primary btn-sm">Resume</button>
             </div>
@@ -151,14 +167,32 @@ export default function Dashboard() {
 
       <section className="dashboard__section">
         <div className="dashboard__section-header">
-          <h2 className="dashboard__section-title">🌍 Explore Opportunities</h2>
+          <h2 className="dashboard__section-title">🌍 Explore Opportunities & Jobs</h2>
+          {feedFilter === 'Jobs' && (
+            <button className="dashboard__see-all" onClick={() => navigate('/jobs')}>Open Job Board <ChevronRight size={14} /></button>
+          )}
         </div>
         <FilterChips options={feedTypes} selected={feedFilter} onChange={setFeedFilter} />
-        <div className="dashboard__feed">
-          {filteredFeed.slice(0, 5).map(opp => (
-            <OpportunityCard key={opp.id} opportunity={opp} onClick={() => navigate(`/opportunity/${opp.id}`)}
-              onBookmark={() => app.toggleSave(opp.id)} />
-          ))}
+        <div className="dashboard__feed" style={{ marginTop: 'var(--space-md)' }}>
+          {feedFilter === 'Jobs' ? (
+            jobList.slice(0, 5).map(job => (
+              <Card key={job.id} variant="interactive" style={{ marginBottom: 'var(--space-sm)' }}>
+                <div className="card-body" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-md)' }}>
+                  <div>
+                    <span className="badge badge-neutral" style={{ marginBottom: '4px' }}>{job.type}</span>
+                    <h4 style={{ margin: '4px 0', fontSize: 'var(--text-base)' }}>{job.title}</h4>
+                    <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: 'var(--text-subhead)' }}>{job.company} · {job.location}</p>
+                  </div>
+                  <a href={job.applyUrl} target="_blank" rel="noopener noreferrer" className="btn btn-primary btn-sm" onClick={e => e.stopPropagation()}>Apply</a>
+                </div>
+              </Card>
+            ))
+          ) : (
+            filteredFeed.slice(0, 5).map(opp => (
+              <OpportunityCard key={opp.id} opportunity={opp} onClick={() => navigate(`/opportunity/${opp.id}`)}
+                onBookmark={() => app.toggleSave(opp.id)} />
+            ))
+          )}
         </div>
       </section>
     </div>
