@@ -4,7 +4,7 @@ import { Flame, ChevronRight, TrendingUp, ClipboardList, Sparkles, MessageSquare
 import { useApp } from '../context/AppContext';
 import { Card, OpportunityCard, ProgressBar, FilterChips } from '../components/ui';
 import { getGreeting } from '../utils/helpers';
-import { dashboard, opportunities, roadmaps, community } from '../services/api';
+import { dashboard, opportunities, jobs, roadmaps, community } from '../services/api';
 import './Dashboard.css';
 
 export default function Dashboard() {

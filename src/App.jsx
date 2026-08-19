@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router';
 import { ThemeProvider } from './context/ThemeContext';
 import { AppProvider } from './context/AppContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -43,51 +44,53 @@ export default function App() {
   return (
     <ThemeProvider>
       <AppProvider>
-        <BrowserRouter>
-          <Routes>
-            {/* Auth flow (no layout shell) */}
-            <Route path="/splash" element={<SplashScreen />} />
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/profile-setup" element={<ProfileSetup />} />
+        <ErrorBoundary>
+          <BrowserRouter>
+            <Routes>
+              {/* Auth flow (no layout shell) */}
+              <Route path="/splash" element={<SplashScreen />} />
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile-setup" element={<ProfileSetup />} />
 
-            {/* Main app (with layout shell + auth protection) */}
-            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-              {/* Phase 1 — Core */}
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/discover" element={<BrowseOpportunities />} />
-              <Route path="/opportunity/:id" element={<OpportunityDetail />} />
+              {/* Main app (with layout shell + auth protection) */}
+              <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+                {/* Phase 1 — Core */}
+                <Route path="/" element={<Dashboard />} />
+                <Route path="/discover" element={<BrowseOpportunities />} />
+                <Route path="/opportunity/:id" element={<OpportunityDetail />} />
 
-              {/* Phase 2 — Learning & Career */}
-              <Route path="/learn" element={<LearningRoadmaps />} />
-              <Route path="/learn/:id" element={<RoadmapDetail />} />
-              <Route path="/skill-gap" element={<SkillGapAnalysis />} />
-              <Route path="/courses" element={<CourseRecommendations />} />
-              <Route path="/cv-builder" element={<CVBuilder />} />
-              <Route path="/cover-letter" element={<CoverLetterBuilder />} />
-              <Route path="/interview-prep" element={<InterviewPrep />} />
-              <Route path="/test-prep" element={<TestPrep />} />
-              <Route path="/reviews" element={<ReviewSystem />} />
-              <Route path="/community" element={<CommunityHub />} />
+                {/* Phase 2 — Learning & Career */}
+                <Route path="/learn" element={<LearningRoadmaps />} />
+                <Route path="/learn/:id" element={<RoadmapDetail />} />
+                <Route path="/skill-gap" element={<SkillGapAnalysis />} />
+                <Route path="/courses" element={<CourseRecommendations />} />
+                <Route path="/cv-builder" element={<CVBuilder />} />
+                <Route path="/cover-letter" element={<CoverLetterBuilder />} />
+                <Route path="/interview-prep" element={<InterviewPrep />} />
+                <Route path="/test-prep" element={<TestPrep />} />
+                <Route path="/reviews" element={<ReviewSystem />} />
+                <Route path="/community" element={<CommunityHub />} />
 
-              {/* Phase 3 — Engagement, Jobs & Utilities */}
-              <Route path="/streak" element={<StreakDashboard />} />
-              <Route path="/leaderboard" element={<Leaderboard />} />
-              <Route path="/mentors" element={<MentorDirectory />} />
-              <Route path="/mentors/:id" element={<MentorProfile />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/jobs" element={<JobBoard />} />
-              <Route path="/notifications" element={<Notifications />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Profile />} />
-              <Route path="/saved" element={<SavedOpportunities />} />
-              <Route path="/applications" element={<ApplicationTracker />} />
-              <Route path="/documents" element={<DocumentVault />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="*" element={<Dashboard />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
+                {/* Phase 3 — Engagement, Jobs & Utilities */}
+                <Route path="/streak" element={<StreakDashboard />} />
+                <Route path="/leaderboard" element={<Leaderboard />} />
+                <Route path="/mentors" element={<MentorDirectory />} />
+                <Route path="/mentors/:id" element={<MentorProfile />} />
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/jobs" element={<JobBoard />} />
+                <Route path="/notifications" element={<Notifications />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/settings" element={<Profile />} />
+                <Route path="/saved" element={<SavedOpportunities />} />
+                <Route path="/applications" element={<ApplicationTracker />} />
+                <Route path="/documents" element={<DocumentVault />} />
+                <Route path="/help" element={<Help />} />
+                <Route path="*" element={<Dashboard />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       </AppProvider>
     </ThemeProvider>
   );
