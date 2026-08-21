@@ -78,8 +78,20 @@ export default function OpportunityDetail() {
 
   const handleApply = () => {
     const url = opp.applicationLink || opp.applyUrl || opp.sourceUrl;
-    if (url) window.open(url, '_blank', 'noopener');
-    else alert('Application link not available yet. Check back later.');
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleShare = () => {
+    if (navigator.share) {
+      navigator.share({
+        title: opp?.title || 'Opportunity on OpportunityHub',
+        text: `Check out this opportunity: ${opp?.title} by ${opp?.organization || opp?.provider}`,
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
   };
 
   const applyUrl = opp.applicationLink || opp.applyUrl || opp.sourceUrl || '#';
@@ -238,19 +250,23 @@ export default function OpportunityDetail() {
 
       {/* Fixed Footer */}
       <div className="detail__footer">
-        <button className="detail__footer-btn" onClick={() => app.toggleSave(opp.id)} aria-label={isSaved ? 'Unsave' : 'Save'}>
-          {isSaved ? <BookmarkCheck size={22} style={{ color: 'var(--color-primary)' }} /> : <Bookmark size={22} />}
-        </button>
-        <button className="detail__footer-btn" aria-label="Share"><Share2 size={22} /></button>
-        <a 
-          href={applyUrl} 
-          target="_blank" 
-          rel="noopener noreferrer" 
-          className="btn btn-primary btn-lg"
-          style={{ flex: 1, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-        >
-          <ExternalLink size={20} /> Apply Now
-        </a>
+        <div className="detail__footer-container">
+          <button className="detail__footer-btn" onClick={() => app.toggleSave(opp.id)} aria-label={isSaved ? 'Unsave' : 'Save'} title={isSaved ? 'Unsave' : 'Save'}>
+            {isSaved ? <BookmarkCheck size={22} style={{ color: 'var(--color-primary)' }} /> : <Bookmark size={22} />}
+          </button>
+          <button className="detail__footer-btn" aria-label="Share" title="Share" onClick={handleShare}>
+            <Share2 size={22} />
+          </button>
+          <a 
+            href={applyUrl} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="btn btn-primary btn-lg"
+            style={{ flex: 1, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            <ExternalLink size={20} /> Apply Now
+          </a>
+        </div>
       </div>
     </div>
   );

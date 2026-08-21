@@ -56,9 +56,63 @@
 .detail__benefit-tag { display: inline-flex; align-items: center; gap: var(--space-2xs); padding: var(--space-xs) var(--space-sm); background: var(--bg-surface); border: 0.5px solid var(--border-color); border-radius: var(--radius-full); font-size: var(--text-footnote); color: var(--text-primary); }
 
 /* Fixed Footer */
-.detail__footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-md) var(--space-lg); background: var(--glass-bg-heavy); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 0.5px solid var(--separator); z-index: 90; }
-.detail__footer-btn { width: 44px; height: 44px; border-radius: var(--radius-md); border: 1px solid var(--border-color); background: var(--bg-surface); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-primary); flex-shrink: 0; transition: background 0.2s; }
+.detail__footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--glass-bg-heavy);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 0.5px solid var(--separator);
+  z-index: 90;
+  transition: left 0.35s var(--ease-smooth);
+}
+
+.detail__footer-container {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 860px;
+}
+
+.detail__footer-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  background: var(--bg-surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--text-primary);
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
 .detail__footer-btn:hover { background: var(--bg-secondary); }
+
+/* Desktop adjustments with SideDrawer */
+@media (min-width: 1025px) {
+  .detail__footer {
+    left: var(--side-drawer-width);
+  }
+  .layout--collapsed .detail__footer {
+    left: var(--side-drawer-collapsed);
+  }
+
+  .detail__sticky {
+    left: var(--side-drawer-width);
+  }
+  .layout--collapsed .detail__sticky {
+    left: var(--side-drawer-collapsed);
+  }
+}
 
 /* Responsive */
 @media (max-width: 480px) {

@@ -57,7 +57,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
-      <BottomNav />
+      {!location.pathname.startsWith('/opportunity/') && <BottomNav />}
     </div>
   );
 }
