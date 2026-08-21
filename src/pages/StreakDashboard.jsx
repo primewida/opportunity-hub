@@ -46,24 +46,40 @@ export default function StreakDashboard() {
   const [goalMinutes, setGoalMinutes] = useState(30);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
+  const fetchStreak = () => {
     streak.get().then(res => {
-      setData(res);
-      if (res.goalDaysOfWeek) {
-        try { setGoalDays(JSON.parse(res.goalDaysOfWeek)); } catch(e){}
+      const s = res.streak || res;
+      setData(s);
+      if (s.goalDaysOfWeek) {
+        try { setGoalDays(JSON.parse(s.goalDaysOfWeek)); } catch(e){}
       }
-      if (res.goalHoursPerDay) {
-        setGoalMinutes(res.goalHoursPerDay * 60);
+      if (s.goalHoursPerDay) {
+        setGoalMinutes(s.goalHoursPerDay * 60);
       }
       setLoading(false);
     }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchStreak();
   }, []);
+
+  const handleLogActivity = async (minutes) => {
+    try {
+      await streak.logActivity({ hoursSpent: minutes / 60 });
+      fetchStreak();
+      alert(`🔥 Logged ${minutes} minutes of study session! Streak updated.`);
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleSaveGoal = async () => {
     setSaving(true);
     try {
-      const updated = await streak.updateGoals({ goalDaysOfWeek: JSON.stringify(goalDays), goalHoursPerDay: goalMinutes / 60 });
-      setData(updated);
+      await streak.updateGoals({ goalDaysOfWeek: goalDays, goalHoursPerDay: goalMinutes / 60 });
+      fetchStreak();
+      alert('Daily goal updated successfully!');
     } catch (e) {
       console.error(e);
     } finally {
@@ -82,17 +98,24 @@ export default function StreakDashboard() {
   const heatColors = ['var(--bg-secondary)', 'rgba(253,203,110,0.3)', 'rgba(253,203,110,0.6)', 'var(--color-accent-amber)'];
   const heatmapData = data ? processLogs(data.logs) : generateHeatmap();
 
-  if (loading) return <div className="streak">Loading...</div>;
+  if (loading) return <div className="streak" style={{ padding: '2rem', textAlign: 'center' }}>Loading streak...</div>;
 
   return (
     <div className="streak">
       <div className="streak__hero">
         <div className="streak__flame-container">
-          <Flame size={56} className="streak__flame-icon" />
-          <span className="streak__count">{data?.currentStreakCount || 0}</span>
+          <Flame size={48} className="streak__flame-icon" />
+          <span className="streak__flame-count">{data?.currentStreakCount || 0}</span>
         </div>
-        <h1 className="streak__hero-title">Day Streak 🔥</h1>
-        <p className="streak__hero-text">You're on fire! Keep learning every day.</p>
+        <h1 className="streak__title">{data?.currentStreakCount || 0} Day Streak!</h1>
+        <p className="streak__subtitle">Consistency is the secret to winning scholarships and securing top jobs</p>
+
+        {/* Quick Log Action */}
+        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+          <Button size="sm" variant="secondary" onClick={() => handleLogActivity(15)}>+15 Mins</Button>
+          <Button size="sm" variant="secondary" onClick={() => handleLogActivity(30)}>+30 Mins</Button>
+          <Button size="sm" variant="primary" onClick={() => handleLogActivity(60)}>+1 Hour Session</Button>
+        </div>
       </div>
 
       <div className="streak__stats">

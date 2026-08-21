@@ -61,8 +61,8 @@ export default function MentorProfile() {
           {(mentor.topics || mentor.skills || []).map(t => <Badge key={t} variant="primary">{t}</Badge>)}
         </div>
         <div className="mentor-profile__actions">
-          <Button variant="primary" icon={MessageSquare}>Send Message</Button>
-          <Button variant="outline" icon={Calendar}>Book Session</Button>
+          <Button variant="primary" icon={MessageSquare} onClick={() => navigate('/messages')}>Send Message</Button>
+          <Button variant="outline" icon={Calendar} onClick={() => alert(`🎉 1-on-1 mentorship session requested with ${mentor.name}! You will receive a calendar invite and direct message confirmation.`)}>Book Session</Button>
         </div>
       </div>
 

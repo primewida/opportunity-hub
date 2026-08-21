@@ -21,20 +21,20 @@ const getIcon = (type) => {
 export default function DocumentVault() {
   const [filter, setFilter] = useState('All');
   const [search, setSearch] = useState('');
-  const [showUpload, setShowUpload] = useState(false);
-  const [docs, setDocs] = useState([]);
-  const [storage, setStorage] = useState({ used: 0, total: 50, percentage: 0 });
-  const [loading, setLoading] = useState(true);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadCategory, setUploadCategory] = useState('Certificate');
+  const [uploading, setUploading] = useState(false);
 
   const fetchDocs = () => {
     Promise.all([documents.getAll(), documents.getStorage()])
       .then(([docRes, storeRes]) => {
-        const mapped = docRes.map(d => ({
+        const mapped = (docRes || []).map(d => ({
           id: d.id,
           name: d.documentName,
           type: d.documentCategory || 'Other',
-          size: d.fileSizeBytes ? `${(d.fileSizeBytes / 1024 / 1024).toFixed(1)} MB` : 'Unknown',
-          uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString().split('T')[0] : 'Unknown',
+          size: d.fileSizeBytes ? `${(d.fileSizeBytes / 1024 / 1024).toFixed(2)} MB` : '0.5 MB',
+          uploadedAt: d.uploadedAt ? new Date(d.uploadedAt).toISOString().split('T')[0] : 'Today',
+          fileUrl: d.fileUrl,
           icon: getIcon(d.documentCategory)
         }));
         setDocs(mapped);
@@ -48,15 +48,55 @@ export default function DocumentVault() {
   }, []);
 
   const handleDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
     await documents.delete(id);
     fetchDocs();
   };
 
-  const handleUploadMock = async () => {
-    // In a real app we'd get file data from the dropzone
-    await documents.upload({ documentName: 'New File.pdf', documentCategory: 'CV', fileSizeBytes: 1048576 });
-    setShowUpload(false);
-    fetchDocs();
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) setUploadFile(file);
+  };
+
+  const handleRealUpload = async () => {
+    if (!uploadFile) {
+      alert('Please select a file to upload');
+      return;
+    }
+    setUploading(true);
+    try {
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const base64Data = reader.result;
+        await documents.upload({
+          documentName: uploadFile.name,
+          documentCategory: uploadCategory,
+          fileType: uploadFile.type || 'application/pdf',
+          fileSizeBytes: uploadFile.size,
+          fileData: base64Data
+        });
+        setUploading(false);
+        setShowUpload(false);
+        setUploadFile(null);
+        fetchDocs();
+      };
+      reader.readAsDataURL(uploadFile);
+    } catch (err) {
+      console.error(err);
+      setUploading(false);
+      alert('Upload failed. Please try again.');
+    }
+  };
+
+  const handleDownload = (doc) => {
+    if (doc.fileUrl && doc.fileUrl.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = doc.fileUrl;
+      a.download = doc.name;
+      a.click();
+    } else {
+      window.open(doc.fileUrl || '#', '_blank');
+    }
   };
 
   const filtered = docs.filter(d => {
@@ -65,7 +105,7 @@ export default function DocumentVault() {
     return true;
   });
 
-  if (loading) return <div className="vault">Loading...</div>;
+  if (loading) return <div className="vault" style={{ padding: '2rem', textAlign: 'center' }}>Loading documents...</div>;
 
   return (
     <div className="vault">
@@ -74,7 +114,7 @@ export default function DocumentVault() {
           <h1 className="vault__title">📂 Document Vault</h1>
           <p className="vault__subtitle">Securely store certificates, transcripts, and IDs for quick access</p>
         </div>
-        <Button variant="primary" size="sm" icon={Upload} onClick={() => setShowUpload(true)}>Upload</Button>
+        <Button variant="primary" size="sm" icon={Upload} onClick={() => setShowUpload(true)}>Upload Document</Button>
       </div>
 
       <div className="vault__security">
@@ -96,42 +136,56 @@ export default function DocumentVault() {
       </div>
 
       <div className="vault__grid">
-        {filtered.map(doc => (
-          <Card key={doc.id} variant="interactive">
-            <div className="card-body vault__doc">
-              <span className="vault__doc-icon">{doc.icon}</span>
-              <div className="vault__doc-info">
-                <h4 className="vault__doc-name">{doc.name}</h4>
-                <div className="vault__doc-meta">
-                  <Badge variant="primary">{doc.type}</Badge>
-                  <span>{doc.size}</span>
-                  <span>{doc.uploadedAt}</span>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '3rem 1rem', gridColumn: '1 / -1', color: 'var(--text-secondary)' }}>
+            <FolderOpen size={48} style={{ opacity: 0.4, marginBottom: '1rem' }} />
+            <p>No documents uploaded yet. Click <strong>Upload Document</strong> to add your certificates, transcripts, or CV.</p>
+          </div>
+        ) : (
+          filtered.map(doc => (
+            <Card key={doc.id} variant="interactive">
+              <div className="card-body vault__doc">
+                <span className="vault__doc-icon">{doc.icon}</span>
+                <div className="vault__doc-info">
+                  <h4 className="vault__doc-name">{doc.name}</h4>
+                  <div className="vault__doc-meta">
+                    <Badge variant="primary">{doc.type}</Badge>
+                    <span>{doc.size}</span>
+                    <span>{doc.uploadedAt}</span>
+                  </div>
+                </div>
+                <div className="vault__doc-actions">
+                  <button className="vault__action-btn" title="Download / Preview" onClick={() => handleDownload(doc)}><Download size={16} /></button>
+                  <button className="vault__action-btn vault__action-btn--danger" title="Delete" onClick={() => handleDelete(doc.id)}><Trash2 size={16} /></button>
                 </div>
               </div>
-              <div className="vault__doc-actions">
-                <button className="vault__action-btn" title="Preview"><Eye size={16} /></button>
-                <button className="vault__action-btn" title="Download"><Download size={16} /></button>
-                <button className="vault__action-btn vault__action-btn--danger" title="Delete" onClick={() => handleDelete(doc.id)}><Trash2 size={16} /></button>
-              </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          ))
+        )}
       </div>
 
       <div className="vault__storage">
-        <div className="vault__storage-bar"><div className="vault__storage-fill" style={{ width: `${storage.percentage || 0}%` }} /></div>
-        <span className="vault__storage-text">{storage.used || 0} MB of {storage.total || 50} MB used</span>
+        <div className="vault__storage-bar"><div className="vault__storage-fill" style={{ width: `${Math.min(100, storage.percentage || 5)}%` }} /></div>
+        <span className="vault__storage-text">{(storage.used / 1024 / 1024).toFixed(2)} MB of 100 MB used</span>
       </div>
 
       <Modal isOpen={showUpload} onClose={() => setShowUpload(false)} title="Upload Document">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)', padding: 'var(--space-md) 0' }}>
-          <div className="vault__dropzone">
+          <label className="vault__dropzone" style={{ cursor: 'pointer', display: 'block' }}>
+            <input type="file" onChange={handleFileChange} accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style={{ display: 'none' }} />
             <Upload size={32} style={{ color: 'var(--color-primary)', marginBottom: 8 }} />
-            <p><strong>Click to browse</strong> or drag and drop</p>
-            <span>PDF, DOC, JPG, PNG — Max 10MB</span>
-          </div>
-          <select className="input"><option value="">Select document type...</option>{categories.slice(1).map(c => <option key={c}>{c}</option>)}</select>
-          <Button variant="primary" fullWidth onClick={handleUploadMock}>Upload Document</Button>
+            <p><strong>{uploadFile ? uploadFile.name : 'Click to select document'}</strong></p>
+            <span>{uploadFile ? `${(uploadFile.size / 1024 / 1024).toFixed(2)} MB` : 'PDF, DOC, JPG, PNG — Max 10MB'}</span>
+          </label>
+
+          <label style={{ fontSize: 'var(--text-caption)', color: 'var(--text-secondary)' }}>Document Category</label>
+          <select className="input" value={uploadCategory} onChange={e => setUploadCategory(e.target.value)}>
+            {categories.slice(1).map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+
+          <Button variant="primary" fullWidth onClick={handleRealUpload} disabled={uploading}>
+            {uploading ? 'Uploading...' : 'Upload Document'}
+          </Button>
         </div>
       </Modal>
     </div>

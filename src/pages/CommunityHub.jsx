@@ -60,6 +60,42 @@ export default function CommunityHub() {
     }).catch(console.error);
   };
 
+  const [commentInputs, setCommentInputs] = useState({});
+
+  const handleAddComment = (postId) => {
+    const text = (commentInputs[postId] || '').trim();
+    if (!text) return;
+    community.addComment(postId, text).then(newComment => {
+      setPosts(prev => prev.map(p => {
+        if (p.id === postId) {
+          const currentComments = p.comments || [];
+          return {
+            ...p,
+            commentCount: (p.commentCount || 0) + 1,
+            comments: [...currentComments, newComment]
+          };
+        }
+        return p;
+      }));
+      setCommentInputs(prev => ({ ...prev, [postId]: '' }));
+    }).catch(err => {
+      console.warn('Comment warning:', err);
+    });
+  };
+
+  const handleShare = (post) => {
+    if (navigator.share) {
+      navigator.share({
+        title: 'OpportunityHub Community Discussion',
+        text: post.content?.slice(0, 100),
+        url: window.location.href
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(window.location.href);
+      alert('Link copied to clipboard!');
+    }
+  };
+
   const renderPost = (post) => (
     <Card key={post.id} variant="elevated" className="community__post">
       <div className="card-body">
@@ -71,11 +107,6 @@ export default function CommunityHub() {
           </div>
         </div>
         <p className="community__post-text">{post.content}</p>
-        {post.tags && (
-          <div className="community__post-tags">
-            {post.tags.map(t => <span key={t} className="community__tag">#{t}</span>)}
-          </div>
-        )}
         <div className="community__post-actions">
           <button className={`community__vote-btn ${votes[post.id] === 'up' ? 'community__vote-btn--active-up' : ''}`}
             onClick={() => handleVote(post.id, 'up')}>
@@ -89,7 +120,7 @@ export default function CommunityHub() {
             <MessageSquare size={16} /> <span>{post.commentCount || post.comments?.length || 0}</span>
             {expandedPost === post.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
-          <button className="community__action-btn"><Share2 size={16} /></button>
+          <button className="community__action-btn" title="Share" onClick={() => handleShare(post)}><Share2 size={16} /></button>
         </div>
         {expandedPost === post.id && (
           <div className="community__comments animate-fadeInUp">
@@ -103,8 +134,14 @@ export default function CommunityHub() {
               </div>
             )) : <p className="community__no-comments">No comments yet. Be the first to share your thoughts!</p>}
             <div className="community__comment-input">
-              <input className="input" placeholder="Write a comment..." />
-              <button className="community__send-btn"><Send size={16} /></button>
+              <input 
+                className="input" 
+                placeholder="Write a comment..." 
+                value={commentInputs[post.id] || ''}
+                onChange={e => setCommentInputs({ ...commentInputs, [post.id]: e.target.value })}
+                onKeyDown={e => e.key === 'Enter' && handleAddComment(post.id)}
+              />
+              <button className="community__send-btn" onClick={() => handleAddComment(post.id)}><Send size={16} /></button>
             </div>
           </div>
         )}

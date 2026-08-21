@@ -25,18 +25,18 @@ export const getDocuments = async (req, res, next) => {
 export const uploadDocument = async (req, res, next) => {
   try {
     const userId = req.user.id;
-    const { documentName, documentCategory, fileType, fileSizeBytes, expiryDate } = req.body;
+    const { documentName, documentCategory, fileType, fileSizeBytes, expiryDate, fileUrl, fileData } = req.body;
 
-    const fileUrl = `https://mock-storage.url/${Date.now()}-${documentName.replace(/\s+/g, '-')}`;
+    const finalUrl = fileData || fileUrl || `data:application/pdf;base64,`;
 
     const document = await prisma.userDocument.create({
       data: {
         userId,
-        documentName,
-        documentCategory,
-        fileUrl,
-        fileType,
-        fileSizeBytes,
+        documentName: documentName || 'Document.pdf',
+        documentCategory: documentCategory || 'Certificate',
+        fileUrl: finalUrl,
+        fileType: fileType || 'application/pdf',
+        fileSizeBytes: parseInt(fileSizeBytes) || 102400,
         expiryDate: expiryDate ? new Date(expiryDate) : null
       }
     });

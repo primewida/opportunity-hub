@@ -8,6 +8,7 @@ import './MentorDirectory.css';
 export default function MentorDirectory() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [field, setField] = useState('All');
   const [mentorsList, setMentorsList] = useState([]);
   const [loading, setLoading] = useState(true);
 

@@ -6,15 +6,26 @@ const server = app.listen(config.port, () => {
   console.log(`📋 Health check: http://localhost:${config.port}/api/health`);
   console.log(`🔧 Environment: ${config.nodeEnv}\n`);
 
-  // Asynchronously synchronize live opportunities in the background
+  // Asynchronously synchronize live opportunities and jobs on startup
   setTimeout(async () => {
     try {
       const { scrapeLiveFeeds } = await import('./services/scraper.service.js');
       await scrapeLiveFeeds();
     } catch (err) {
-      console.warn('Background web scraping notice:', err.message);
+      console.warn('Background startup web scraping notice:', err.message);
     }
-  }, 2000);
+  }, 3000);
+
+  // Recurring automated synchronization every 6 hours
+  setInterval(async () => {
+    try {
+      console.log('⏰ Running scheduled 6-hour opportunities and jobs scraper...');
+      const { scrapeLiveFeeds } = await import('./services/scraper.service.js');
+      await scrapeLiveFeeds();
+    } catch (err) {
+      console.warn('Scheduled scraping notice:', err.message);
+    }
+  }, 6 * 60 * 60 * 1000);
 });
 
 // Graceful shutdown

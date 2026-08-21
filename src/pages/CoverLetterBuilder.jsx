@@ -114,7 +114,15 @@ export default function CoverLetterBuilder() {
               <Button variant={copied ? 'success' : 'outline'} size="sm" icon={copied ? Check : Copy} onClick={handleCopy}>
                 {copied ? 'Copied!' : 'Copy to Clipboard'}
               </Button>
-              <Button variant="outline" size="sm" icon={Download}>Download</Button>
+              <Button variant="outline" size="sm" icon={Download} onClick={() => {
+                const element = document.createElement("a");
+                const file = new Blob([getFullLetter()], {type: 'text/plain'});
+                element.href = URL.createObjectURL(file);
+                element.download = `Cover_Letter_${opp?.organization || 'Application'}.txt`;
+                document.body.appendChild(element);
+                element.click();
+                document.body.removeChild(element);
+              }}>Download (.txt)</Button>
             </div>
             <div className="cover-letter__preview">
               <div className="cover-letter__paper">
@@ -138,7 +146,7 @@ export default function CoverLetterBuilder() {
         {step < 2 ? (
           <Button variant="primary" icon={ArrowRight} disabled={!canNext} onClick={() => setStep(step + 1)}>Next</Button>
         ) : (
-          <Button variant="primary" icon={Download}>Export as PDF</Button>
+          <Button variant="primary" icon={Download} onClick={() => window.print()}>Print / Export as PDF</Button>
         )}
       </div>
     </div>
