@@ -10,8 +10,13 @@ import prisma from '../config/database.js';
 
 const OPPORTUNITY_FEEDS = [
   {
-    name: 'Scholarship Region',
+    name: 'Scholarship Region (Main)',
     url: 'https://www.scholarshipregion.com/feed/',
+    defaultType: 'Scholarship',
+  },
+  {
+    name: 'Scholarship Region (Scholarships Category)',
+    url: 'https://www.scholarshipregion.com/category/scholarships/feed/',
     defaultType: 'Scholarship',
   },
   {
@@ -20,14 +25,29 @@ const OPPORTUNITY_FEEDS = [
     defaultType: 'Scholarship',
   },
   {
-    name: 'Opportunities For Africans',
+    name: 'Opportunities For Africans (Main)',
     url: 'https://www.opportunitiesforafricans.com/feed/',
     defaultType: 'Scholarship',
   },
   {
-    name: 'Opportunity Desk',
+    name: 'Opportunities For Africans (Scholarships)',
+    url: 'https://www.opportunitiesforafricans.com/category/scholarships/feed/',
+    defaultType: 'Scholarship',
+  },
+  {
+    name: 'Opportunity Desk (Main)',
     url: 'https://opportunitydesk.org/feed/',
     defaultType: 'Scholarship',
+  },
+  {
+    name: 'Opportunity Desk (Fellowships & Grants)',
+    url: 'https://opportunitydesk.org/category/fellowships/feed/',
+    defaultType: 'Fellowship',
+  },
+  {
+    name: 'Opportunity Desk (Contests & Awards)',
+    url: 'https://opportunitydesk.org/category/contests/feed/',
+    defaultType: 'Competition',
   },
   {
     name: 'Youth Hub Africa',
@@ -287,7 +307,7 @@ export async function scrapeLiveOpportunities() {
       const xmlText = await response.text();
       const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
 
-      for (const itemXml of itemMatches.slice(0, 30)) {
+      for (const itemXml of itemMatches.slice(0, 40)) {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
