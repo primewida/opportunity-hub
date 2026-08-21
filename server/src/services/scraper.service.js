@@ -1,25 +1,55 @@
 /**
- * Real-time Multi-Source Web Scraper Engine
- * Synchronizes live African & global scholarships, grants, and fellowships into the Opportunity table,
- * and live tech jobs, internships, and NYSC placements into the Job table.
+ * Multi-Source Production Opportunity & Job Web Scraper Engine
+ * Scrapes live scholarships, grants, fellowships from Scholarship Region, MySchoolGist,
+ * Opportunities For Africans, Opportunity Desk, and Youth Hub Africa into the Opportunity table.
+ * Scrapes live jobs, NGO careers, graduate trainees from My NGO Jobs, NGO Jobs in Africa,
+ * Hot Nigerian Jobs, and Jobicy Tech Careers into the Job table.
  */
 import prisma from '../config/database.js';
 
 const OPPORTUNITY_FEEDS = [
+  {
+    name: 'Scholarship Region',
+    url: 'https://www.scholarshipregion.com/feed/',
+    defaultType: 'Scholarship',
+  },
+  {
+    name: 'Student & Academic Opportunities (MySchoolGist)',
+    url: 'https://myschoolgist.com/feed/',
+    defaultType: 'Scholarship',
+  },
   {
     name: 'Opportunities For Africans',
     url: 'https://www.opportunitiesforafricans.com/feed/',
     defaultType: 'Scholarship',
   },
   {
-    name: 'OpportunityDesk',
+    name: 'Opportunity Desk',
     url: 'https://opportunitydesk.org/feed/',
     defaultType: 'Scholarship',
   },
   {
-    name: 'YouthHubAfrica',
+    name: 'Youth Hub Africa',
     url: 'https://youthhubafrica.org/feed/',
     defaultType: 'Fellowship',
+  },
+];
+
+const JOB_FEEDS = [
+  {
+    name: 'My NGO Jobs',
+    url: 'https://myngojobs.com/feed/',
+    defaultCompany: 'NGO / Non-Profit Org',
+  },
+  {
+    name: 'NGO Jobs in Africa',
+    url: 'https://ngojobsinafrica.com/feed/',
+    defaultCompany: 'International NGO',
+  },
+  {
+    name: 'Hot Nigerian Jobs & Career Portal',
+    url: 'https://www.hotnigerianjobs.com/feed/',
+    defaultCompany: 'Nigerian Employer',
   },
 ];
 
@@ -43,6 +73,8 @@ function cleanHtml(raw) {
     .replace(/&#8221;/g, '"')
     .replace(/&#8230;/g, '...')
     .replace(/&#038;/g, '&')
+    .replace(/&#124;/g, '|')
+    .replace(/&#58;/g, ':')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -51,8 +83,8 @@ function detectOpportunityType(title = '', text = '') {
   const combined = `${title} ${text}`.toLowerCase();
   if (combined.includes('internship') || combined.includes('intern ')) return 'Internship';
   if (combined.includes('fellowship') || combined.includes('fellow ')) return 'Fellowship';
-  if (combined.includes('grant') || combined.includes('funding')) return 'Grant';
-  if (combined.includes('competition') || combined.includes('challenge') || combined.includes('hackathon') || combined.includes('award')) return 'Competition';
+  if (combined.includes('grant') || combined.includes('funding') || combined.includes('award')) return 'Grant';
+  if (combined.includes('competition') || combined.includes('challenge') || combined.includes('hackathon') || combined.includes('essay')) return 'Competition';
   if (combined.includes('training') || combined.includes('bootcamp') || combined.includes('academy') || combined.includes('workshop')) return 'Training Program';
   return 'Scholarship';
 }
@@ -60,9 +92,9 @@ function detectOpportunityType(title = '', text = '') {
 function detectEducationLevel(title = '', text = '') {
   const combined = `${title} ${text}`.toLowerCase();
   if (combined.includes('phd') || combined.includes('doctorate')) return 'PhD';
-  if (combined.includes('master') || combined.includes('postgraduate') || combined.includes('msc')) return 'Masters';
-  if (combined.includes('undergraduate') || combined.includes('bachelor') || combined.includes('university student')) return 'Undergraduate';
-  if (combined.includes('high school') || combined.includes('secondary school') || combined.includes('waec')) return 'SSS';
+  if (combined.includes('master') || combined.includes('postgraduate') || combined.includes('msc') || combined.includes('mba')) return 'Masters';
+  if (combined.includes('undergraduate') || combined.includes('bachelor') || combined.includes('university') || combined.includes('college')) return 'Undergraduate';
+  if (combined.includes('high school') || combined.includes('secondary school') || combined.includes('waec') || combined.includes('jamb')) return 'SSS';
   if (combined.includes('nysc') || combined.includes('graduate')) return 'Graduate';
   return 'Undergraduate';
 }
@@ -74,7 +106,8 @@ function detectProvider(title = '', text = '') {
     'African Union', 'World Bank', 'DAAD', 'Fulbright', 'Erasmus Mundus',
     'She Code Africa', 'Paystack', 'Flutterwave', 'Interswitch', 'Kuda Bank',
     'TETFund', 'Agip', 'ExxonMobil', 'Seplat Energy', 'Agbami', 'Jim Ovia Foundation',
-    'United Nations', 'UNESCO', 'Bill & Melinda Gates Foundation', 'Obafemi Awolowo Foundation'
+    'ICAN', 'United Nations', 'UNICEF', 'UNESCO', 'Bill & Melinda Gates Foundation',
+    'Martingale Foundation', 'Gates Cambridge', 'Rhodes Trust', 'British Council'
   ];
   for (const p of knownProviders) {
     if (title.toLowerCase().includes(p.toLowerCase()) || text.toLowerCase().includes(p.toLowerCase())) {
@@ -100,11 +133,11 @@ function extractDeadline(text = '') {
 }
 
 /**
- * Scrapes live scholarships, fellowships, and grants
+ * Scrapes live scholarships, grants, student opportunities
  */
 export async function scrapeLiveOpportunities() {
   const results = [];
-  console.log('🌐 Scraping live opportunities and scholarships...');
+  console.log('🌐 Scraping live opportunities (Scholarship Region, MySchoolGist, OFA, Opportunity Desk)...');
 
   for (const feed of OPPORTUNITY_FEEDS) {
     try {
@@ -142,7 +175,7 @@ export async function scrapeLiveOpportunities() {
         const deadline = extractDeadline(desc);
         const bannerColor = BANNER_COLORS[Math.floor(Math.random() * BANNER_COLORS.length)];
 
-        const isNigeria = title.toLowerCase().includes('nigeria') || desc.toLowerCase().includes('nigeria') || provider.toLowerCase().includes('nigeria');
+        const isNigeria = title.toLowerCase().includes('nigeria') || desc.toLowerCase().includes('nigeria') || provider.toLowerCase().includes('nigeria') || feed.name.includes('MySchoolGist');
         const location = isNigeria ? 'Nigeria' : 'Global & Africa';
 
         const existing = await prisma.opportunity.findFirst({
@@ -170,11 +203,11 @@ export async function scrapeLiveOpportunities() {
           eligibilityCriteria: JSON.stringify({
             education_level: [eduLevel],
             nationality: isNigeria ? 'Nigerian' : 'African',
-            eligibility_summary: `Open to ${eduLevel} students and early-career scholars.`
+            eligibility_summary: `Open to ${eduLevel} students and applicants.`
           }),
           requiredDocuments: JSON.stringify(['Curriculum Vitae (CV)', 'Academic Transcript / Certificate', 'Statement of Purpose']),
-          applicationSteps: '1. Access official application portal\n2. Fill out candidate profile & academic records\n3. Upload credentials & letters\n4. Submit before deadline',
-          benefits: JSON.stringify(['Full or Partial Funding Support', 'Global Mentorship & Network', 'Recognized Certification']),
+          applicationSteps: '1. Access official application portal\n2. Fill out applicant profile & academic records\n3. Upload credentials & documents\n4. Submit before deadline',
+          benefits: JSON.stringify(['Full or Partial Funding Support', 'Mentorship & Professional Network', 'Recognized Certification']),
           tags: JSON.stringify([oppType, eduLevel, location, provider]),
         };
 
@@ -198,14 +231,104 @@ export async function scrapeLiveOpportunities() {
 }
 
 /**
- * Scrapes live tech jobs and career opportunities into the Job table
+ * Scrapes live jobs from My NGO Jobs, NGO Jobs in Africa, Hot Nigerian Jobs, and Jobicy Tech Careers
  */
 export async function scrapeLiveJobs() {
   const results = [];
-  console.log('💼 Scraping live tech jobs and internships into Job table...');
+  console.log('💼 Scraping live jobs (My NGO Jobs, Hot Nigerian Jobs, Jobicy, NGO Jobs in Africa)...');
 
+  // 1. Scrape RSS Job Feeds (My NGO Jobs, NGO Jobs in Africa, Hot Nigerian Jobs)
+  for (const feed of JOB_FEEDS) {
+    try {
+      const response = await fetch(feed.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+        },
+        signal: AbortSignal.timeout(12000)
+      });
+
+      if (!response.ok) continue;
+
+      const xmlText = await response.text();
+      const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+      for (const itemXml of itemMatches.slice(0, 15)) {
+        const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
+        const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
+        const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
+
+        const rawTitle = titleMatch ? titleMatch[1] : '';
+        const rawLink = linkMatch ? linkMatch[1] : '';
+        const rawDesc = descMatch ? descMatch[1] : '';
+
+        const title = cleanHtml(rawTitle);
+        const link = cleanHtml(rawLink);
+        const desc = cleanHtml(rawDesc);
+
+        if (!title || !link || title.length < 5) continue;
+
+        // Extract company from title if pattern like "Role at Company" or "Company Recruitment"
+        let company = feed.defaultCompany;
+        if (title.includes(' at ')) {
+          company = title.split(' at ')[1].trim();
+        } else if (title.includes(' – ')) {
+          company = title.split(' – ')[0].trim();
+        } else if (title.includes(' Job Recruitment')) {
+          company = title.replace(/Job Recruitment.*/i, '').trim();
+        }
+
+        const titleLower = title.toLowerCase();
+        let jobType = 'Full-time';
+        if (titleLower.includes('intern') || titleLower.includes('internship')) jobType = 'Internship';
+        else if (titleLower.includes('nysc')) jobType = 'NYSC';
+        else if (titleLower.includes('part-time') || titleLower.includes('volunteer')) jobType = 'Part-time';
+
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 45 + Math.floor(Math.random() * 30));
+
+        const existingJob = await prisma.job.findFirst({
+          where: {
+            OR: [
+              { applyUrl: link },
+              { title: title }
+            ]
+          }
+        });
+
+        const jobData = {
+          title,
+          description: desc.slice(0, 600) + (desc.length > 600 ? '...' : ''),
+          companyName: company.slice(0, 60),
+          location: feed.name.includes('Hot Nigerian') ? 'Nigeria' : 'Nigeria & Remote',
+          jobType,
+          salaryRange: feed.name.includes('NGO') ? 'Competitive NGO Scale' : 'Competitive',
+          applicationDeadline: deadline,
+          requirements: JSON.stringify(['Relevant degree or professional qualification', 'Strong interpersonal and problem-solving skills', 'Team collaboration']),
+          responsibilities: 'Execute day-to-day organizational responsibilities, report to squad leads, and meet project milestones.',
+          applyUrl: link,
+          tags: JSON.stringify([jobType, feed.name.includes('NGO') ? 'NGO & Non-Profit' : 'Corporate', 'Nigeria']),
+        };
+
+        if (existingJob) {
+          await prisma.job.update({
+            where: { id: existingJob.id },
+            data: jobData
+          });
+          results.push({ id: existingJob.id, title, type: 'job', status: 'updated' });
+        } else {
+          const created = await prisma.job.create({ data: jobData });
+          results.push({ id: created.id, title, type: 'job', status: 'created' });
+        }
+      }
+    } catch (feedErr) {
+      console.warn(`  ⚠️ Scraper notice for ${feed.name}:`, feedErr.message);
+    }
+  }
+
+  // 2. Scrape Global Remote Tech Jobs from Jobicy API
   try {
-    const response = await fetch('https://jobicy.com/api/v2/remote-jobs?count=30', {
+    const response = await fetch('https://jobicy.com/api/v2/remote-jobs?count=25', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
         'Accept': 'application/json'
@@ -221,10 +344,11 @@ export async function scrapeLiveJobs() {
         if (!j.jobTitle || !j.url) continue;
 
         const title = j.jobTitle.trim();
-        const companyName = (j.companyName || 'Tech Global').trim();
-        const location = j.jobGeo || 'Remote (Global)';
-        const jobType = Array.isArray(j.jobType) ? j.jobType[0] : (j.jobType || 'Full-time');
-        
+        const companyName = (j.companyName || 'Global Tech').trim();
+        const location = j.jobGeo || 'Remote';
+        const rawType = Array.isArray(j.jobType) ? j.jobType[0] : (j.jobType || 'Full-time');
+        const jobType = rawType.includes('Part') ? 'Part-time' : rawType.includes('Intern') ? 'Internship' : 'Full-time';
+
         let salaryRange = null;
         if (j.annualSalaryMin && j.annualSalaryMax) {
           salaryRange = `$${j.annualSalaryMin.toLocaleString()} - $${j.annualSalaryMax.toLocaleString()} / year`;
@@ -233,7 +357,7 @@ export async function scrapeLiveJobs() {
         }
 
         const deadline = new Date();
-        deadline.setDate(deadline.getDate() + 45 + Math.floor(Math.random() * 30));
+        deadline.setDate(deadline.getDate() + 50);
 
         const existingJob = await prisma.job.findFirst({
           where: {
@@ -244,18 +368,18 @@ export async function scrapeLiveJobs() {
           }
         });
 
-        const cleanDesc = cleanHtml(j.jobDescription || j.jobExcerpt || 'Join this fast-growing team to build high-impact digital products and modern cloud infrastructure.');
+        const cleanDesc = cleanHtml(j.jobDescription || j.jobExcerpt || 'Build high-impact digital products and modern cloud architecture.');
 
         const jobData = {
           title,
           description: cleanDesc.slice(0, 600) + (cleanDesc.length > 600 ? '...' : ''),
           companyName,
           location,
-          jobType: jobType.includes('Part') ? 'Part-time' : jobType.includes('Intern') ? 'Internship' : 'Full-time',
+          jobType,
           salaryRange,
           applicationDeadline: deadline,
-          requirements: JSON.stringify(j.jobIndustry ? [j.jobIndustry, 'Good communication', 'Relevant technical experience'] : ['Proficiency in stack', 'Problem solving skills']),
-          responsibilities: 'Collaborate with cross-functional team, develop product features, write clean maintainable code, and participate in sprint planning.',
+          requirements: JSON.stringify(j.jobIndustry ? [j.jobIndustry, 'Relevant experience', 'Good communication'] : ['Technical proficiency', 'Problem solving']),
+          responsibilities: 'Collaborate with cross-functional engineering team, develop scalable features, and write maintainable code.',
           applyUrl: j.url,
           tags: JSON.stringify([j.jobIndustry || 'Technology', jobType, 'Remote']),
         };
@@ -273,10 +397,10 @@ export async function scrapeLiveJobs() {
       }
     }
   } catch (jobErr) {
-    console.warn('  ⚠️ Job scraper notice:', jobErr.message);
+    console.warn('  ⚠️ Jobicy scraper notice:', jobErr.message);
   }
 
-  // Also ensure top Nigerian tech opportunities exist in Job table
+  // 3. Ensure Top Nigerian Tech Companies Are Represented
   const nigerianJobs = [
     {
       title: 'Junior Fullstack Software Engineer',
@@ -368,7 +492,7 @@ export async function scrapeLiveJobs() {
 }
 
 /**
- * Scrapes both opportunities and jobs concurrently
+ * Scrapes all opportunity and job portals concurrently
  */
 export async function scrapeLiveFeeds() {
   const [opps, jobs] = await Promise.allSettled([
