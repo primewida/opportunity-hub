@@ -1,23 +1,20 @@
 import { z } from 'zod';
-import { EDUCATION_LEVELS } from '../utils/constants.js';
 
 export const registerSchema = z.object({
-  email: z.string().email('Invalid email format'),
-  password: z.string().min(8, 'Password must be at least 8 characters')
-    .regex(/[a-zA-Z]/, 'Password must contain at least one letter')
-    .regex(/[0-9]/, 'Password must contain at least one number'),
-  firstName: z.string().min(2, 'First name must be at least 2 characters'),
-  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
-  educationLevel: z.enum([...EDUCATION_LEVELS])
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  firstName: z.string().min(1, 'First name is required').optional().default('Scholar'),
+  lastName: z.string().optional().default(''),
+  educationLevel: z.string().optional().default('Undergraduate')
 });
 
 export const loginSchema = z.object({
-  email: z.string().email('Invalid email format'),
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(1, 'Password is required')
 });
 
 export const forgotPasswordSchema = z.object({
-  email: z.string().email('Invalid email format')
+  email: z.string().email('Please enter a valid email address')
 });
 
 export const resetPasswordSchema = z.object({

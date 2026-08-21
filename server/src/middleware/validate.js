@@ -5,8 +5,9 @@ export const validate = (schema) => async (req, res, next) => {
     next();
   } catch (error) {
     if (error.name === 'ZodError') {
+      const firstMessage = error.errors?.[0]?.message || 'Validation failed';
       return res.status(400).json({
-        error: 'Validation failed',
+        error: firstMessage,
         details: error.errors
       });
     }

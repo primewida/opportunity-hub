@@ -38,15 +38,23 @@ export default function Auth() {
     setLoading(true);
     try {
       let profile;
+      const cleanEmail = email.trim().toLowerCase();
       if (method === 'phone') {
         // Phone OTP simulated — log in as default student
         profile = await login('student@opportunityhub.ng', 'password123');
       } else if (mode === 'login') {
-        profile = await login(email, password);
+        profile = await login(cleanEmail, password);
       } else {
-        const [firstName, ...rest] = name.split(' ');
-        const lastName = rest.join(' ') || firstName;
-        profile = await register({ email, password, firstName, lastName });
+        const cleanName = name.trim();
+        const [firstName, ...rest] = cleanName.split(' ');
+        const lastName = rest.join(' ') || firstName || 'Scholar';
+        profile = await register({
+          email: cleanEmail,
+          password,
+          firstName: firstName || 'Scholar',
+          lastName,
+          educationLevel: 'Undergraduate'
+        });
       }
 
       if (profile?.onboardingCompleted) {

@@ -6,11 +6,15 @@ import config from '../config/env.js';
 
 export const register = async (req, res, next) => {
   try {
-    const { email, password, firstName, lastName, educationLevel } = req.body;
-    
+    let { email, password, firstName, lastName, educationLevel } = req.body;
+    email = (email || '').trim().toLowerCase();
+    firstName = (firstName || 'Scholar').trim();
+    lastName = (lastName || '').trim();
+    educationLevel = educationLevel || 'Undergraduate';
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      throw new ConflictError('Email already in use');
+      throw new ConflictError('An account with this email already exists. Please log in.');
     }
 
     const hashedPassword = await hashPassword(password);
@@ -45,16 +49,17 @@ export const register = async (req, res, next) => {
 
 export const login = async (req, res, next) => {
   try {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
+    email = (email || '').trim().toLowerCase();
     
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new UnauthorizedError('Invalid credentials');
+      throw new UnauthorizedError('Invalid email or password');
     }
 
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
-      throw new UnauthorizedError('Invalid credentials');
+      throw new UnauthorizedError('Invalid email or password');
     }
 
     const token = generateToken(user.id);
