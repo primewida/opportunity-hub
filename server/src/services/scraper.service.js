@@ -1,5 +1,6 @@
 /**
  * Multi-Source Production Opportunity & Job Web Scraper Engine
+ * Featuring Deep Direct Application Link Resolution
  * Scrapes live scholarships, grants, fellowships from Scholarship Region, MySchoolGist,
  * Opportunities For Africans, Opportunity Desk, and Youth Hub Africa into the Opportunity table.
  * Scrapes live jobs, NGO careers, graduate trainees from My NGO Jobs, NGO Jobs in Africa,
@@ -79,6 +80,138 @@ function cleanHtml(raw) {
     .trim();
 }
 
+function isDirectPortalUrl(url, pageDomain = '') {
+  if (!url) return false;
+  const u = url.toLowerCase();
+
+  // Filter out social networks, search engines, CMS internals
+  if (
+    u.includes('facebook.com') ||
+    u.includes('twitter.com') ||
+    u.includes('x.com') ||
+    u.includes('whatsapp.com') ||
+    u.includes('linkedin.com/sharing') ||
+    u.includes('instagram.com') ||
+    u.includes('pinterest.com') ||
+    u.includes('t.me') ||
+    u.includes('youtube.com') ||
+    u.includes('wp-content') ||
+    u.includes('wp-admin') ||
+    u.includes('gravatar.com') ||
+    u.includes('schema.org') ||
+    u.includes('w3.org') ||
+    u.includes('google.com/search') ||
+    (pageDomain && u.includes(pageDomain))
+  ) {
+    return false;
+  }
+
+  // Positive ATS / Application Portals
+  return (
+    u.startsWith('mailto:') ||
+    u.includes('forms.gle') ||
+    u.includes('docs.google.com/forms') ||
+    u.includes('submittable.com') ||
+    u.includes('geckoform.com') ||
+    u.includes('greenhouse.io') ||
+    u.includes('lever.co') ||
+    u.includes('workday.com') ||
+    u.includes('myworkdayjobs.com') ||
+    u.includes('smartrecruiters.com') ||
+    u.includes('taleo.net') ||
+    u.includes('bamboohr.com') ||
+    u.includes('recruitee.com') ||
+    u.includes('applytojob.com') ||
+    u.includes('jobscore.com') ||
+    u.includes('/careers') ||
+    u.includes('/apply') ||
+    u.includes('/jobs/') ||
+    u.includes('/application') ||
+    u.includes('/scholarship') ||
+    u.includes('.edu/') ||
+    u.includes('.ac.uk/') ||
+    u.includes('.gov/') ||
+    u.includes('.org/') ||
+    u.includes('survey.zohopublic.com') ||
+    u.includes('typeform.com')
+  );
+}
+
+/**
+ * Inspects webpage HTML to extract the exact official direct application portal
+ */
+export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
+  if (!pageUrl || !pageUrl.startsWith('http')) return pageUrl;
+
+  try {
+    let domain = '';
+    try { domain = new URL(pageUrl).hostname.replace('www.', ''); } catch (e) {}
+
+    // 1. Check if description has embedded mailto or direct forms
+    const directMatches = [
+      ...rawItemDesc.matchAll(/href=["'](https?:\/\/[^"']+|mailto:[^"']+)["']/gis)
+    ].map(m => m[1]);
+
+    for (const link of directMatches) {
+      if (isDirectPortalUrl(link, domain)) {
+        return link;
+      }
+    }
+
+    // 2. Fetch the target webpage to parse the "Click here to apply" button
+    const res = await fetch(pageUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      },
+      signal: AbortSignal.timeout(6000)
+    });
+
+    if (!res.ok) return pageUrl;
+    const html = await res.text();
+
+    const anchors = [...html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis)];
+    
+    // Priority A: Anchor text containing explicit application keywords
+    for (const a of anchors) {
+      const href = a[1];
+      const text = a[2].replace(/<[^>]+>/g, '').trim().toLowerCase();
+      
+      if (!isDirectPortalUrl(href, domain)) continue;
+
+      if (
+        text.includes('apply') ||
+        text.includes('application') ||
+        text.includes('official') ||
+        text.includes('click here') ||
+        text.includes('portal') ||
+        text.includes('register') ||
+        text.includes('submit')
+      ) {
+        return href;
+      }
+    }
+
+    // Priority B: Any valid external portal link (GeckoForm, Google Form, University Subdomain, etc.)
+    for (const a of anchors) {
+      const href = a[1];
+      if (isDirectPortalUrl(href, domain)) {
+        return href;
+      }
+    }
+
+    // Priority C: Mailto link for job applications
+    const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    if (mailtoMatch && mailtoMatch[1]) {
+      return `mailto:${mailtoMatch[1]}`;
+    }
+
+  } catch (err) {
+    // If fetching fails or times out, safely return pageUrl
+  }
+
+  return pageUrl;
+}
+
 function detectOpportunityType(title = '', text = '') {
   const combined = `${title} ${text}`.toLowerCase();
   if (combined.includes('internship') || combined.includes('intern ')) return 'Internship';
@@ -107,7 +240,7 @@ function detectProvider(title = '', text = '') {
     'She Code Africa', 'Paystack', 'Flutterwave', 'Interswitch', 'Kuda Bank',
     'TETFund', 'Agip', 'ExxonMobil', 'Seplat Energy', 'Agbami', 'Jim Ovia Foundation',
     'ICAN', 'United Nations', 'UNICEF', 'UNESCO', 'Bill & Melinda Gates Foundation',
-    'Martingale Foundation', 'Gates Cambridge', 'Rhodes Trust', 'British Council'
+    'Martingale Foundation', 'Gates Cambridge', 'Rhodes Trust', 'British Council', 'Andersen'
   ];
   for (const p of knownProviders) {
     if (title.toLowerCase().includes(p.toLowerCase()) || text.toLowerCase().includes(p.toLowerCase())) {
@@ -133,11 +266,11 @@ function extractDeadline(text = '') {
 }
 
 /**
- * Scrapes live scholarships, grants, student opportunities
+ * Scrapes live scholarships and resolves direct official application links
  */
 export async function scrapeLiveOpportunities() {
   const results = [];
-  console.log('🌐 Scraping live opportunities (Scholarship Region, MySchoolGist, OFA, Opportunity Desk)...');
+  console.log('🌐 Scraping live opportunities with Direct Link Resolver...');
 
   for (const feed of OPPORTUNITY_FEEDS) {
     try {
@@ -154,7 +287,7 @@ export async function scrapeLiveOpportunities() {
       const xmlText = await response.text();
       const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
 
-      for (const itemXml of itemMatches.slice(0, 40)) {
+      for (const itemXml of itemMatches.slice(0, 30)) {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
@@ -168,6 +301,9 @@ export async function scrapeLiveOpportunities() {
         const desc = cleanHtml(rawDesc);
 
         if (!title || !link || title.length < 5) continue;
+
+        // Resolve direct application link asynchronously
+        const directApplyLink = await resolveDirectApplicationLink(link, rawDesc);
 
         const oppType = detectOpportunityType(title, desc);
         const eduLevel = detectEducationLevel(title, desc);
@@ -193,7 +329,7 @@ export async function scrapeLiveOpportunities() {
           opportunityType: oppType,
           provider,
           sourceUrl: link,
-          applicationLink: link,
+          applicationLink: directApplyLink || link,
           deadline,
           location,
           educationLevel: eduLevel,
@@ -231,11 +367,11 @@ export async function scrapeLiveOpportunities() {
 }
 
 /**
- * Scrapes live jobs from My NGO Jobs, NGO Jobs in Africa, Hot Nigerian Jobs, and Jobicy Tech Careers
+ * Scrapes live jobs and resolves direct company application portals
  */
 export async function scrapeLiveJobs() {
   const results = [];
-  console.log('💼 Scraping live jobs (My NGO Jobs, Hot Nigerian Jobs, Jobicy, NGO Jobs in Africa)...');
+  console.log('💼 Scraping live jobs with Direct ATS/Portal Resolver...');
 
   // 1. Scrape RSS Job Feeds (My NGO Jobs, NGO Jobs in Africa, Hot Nigerian Jobs)
   for (const feed of JOB_FEEDS) {
@@ -253,7 +389,7 @@ export async function scrapeLiveJobs() {
       const xmlText = await response.text();
       const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
 
-      for (const itemXml of itemMatches.slice(0, 60)) {
+      for (const itemXml of itemMatches.slice(0, 40)) {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
@@ -268,7 +404,9 @@ export async function scrapeLiveJobs() {
 
         if (!title || !link || title.length < 5) continue;
 
-        // Extract company from title if pattern like "Role at Company" or "Company Recruitment"
+        // Resolve direct application link or mailto
+        const directApplyUrl = await resolveDirectApplicationLink(link, rawDesc);
+
         let company = feed.defaultCompany;
         if (title.includes(' at ')) {
           company = title.split(' at ')[1].trim();
@@ -306,7 +444,7 @@ export async function scrapeLiveJobs() {
           applicationDeadline: deadline,
           requirements: JSON.stringify(['Relevant degree or professional qualification', 'Strong interpersonal and problem-solving skills', 'Team collaboration']),
           responsibilities: 'Execute day-to-day organizational responsibilities, report to squad leads, and meet project milestones.',
-          applyUrl: link,
+          applyUrl: directApplyUrl || link,
           tags: JSON.stringify([jobType, feed.name.includes('NGO') ? 'NGO & Non-Profit' : 'Corporate', 'Nigeria']),
         };
 
@@ -328,7 +466,7 @@ export async function scrapeLiveJobs() {
 
   // 2. Scrape Global Remote Tech Jobs from Jobicy API
   try {
-    const response = await fetch('https://jobicy.com/api/v2/remote-jobs?count=25', {
+    const response = await fetch('https://jobicy.com/api/v2/remote-jobs?count=40', {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
         'Accept': 'application/json'
