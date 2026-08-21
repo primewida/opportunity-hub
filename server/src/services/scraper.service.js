@@ -154,7 +154,7 @@ export async function scrapeLiveOpportunities() {
       const xmlText = await response.text();
       const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
 
-      for (const itemXml of itemMatches.slice(0, 15)) {
+      for (const itemXml of itemMatches.slice(0, 40)) {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
@@ -253,7 +253,7 @@ export async function scrapeLiveJobs() {
       const xmlText = await response.text();
       const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
 
-      for (const itemXml of itemMatches.slice(0, 15)) {
+      for (const itemXml of itemMatches.slice(0, 60)) {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);

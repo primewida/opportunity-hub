@@ -60,8 +60,8 @@ export const users = {
 /* ── Opportunities ── */
 export const opportunities = {
   getAll: (params = {}) => {
-    const q = new URLSearchParams(params).toString();
-    return get(`/opportunities${q ? '?' + q : ''}`);
+    const q = new URLSearchParams({ limit: 200, ...params }).toString();
+    return get(`/opportunities?${q}`);
   },
   getFeed: () => get('/opportunities/feed'),
   getById: (id) => get(`/opportunities/${id}`),
@@ -74,8 +74,8 @@ export const opportunities = {
 /* ── Jobs ── */
 export const jobs = {
   getAll: (params = {}) => {
-    const q = new URLSearchParams(params).toString();
-    return get(`/jobs${q ? '?' + q : ''}`);
+    const q = new URLSearchParams({ limit: 200, ...params }).toString();
+    return get(`/jobs?${q}`);
   },
   getById: (id) => get(`/jobs/${id}`),
   save: (id) => post(`/jobs/${id}/save`),

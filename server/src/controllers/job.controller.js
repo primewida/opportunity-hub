@@ -3,7 +3,7 @@ import { NotFoundError } from '../utils/errors.js';
 
 export const getJobs = async (req, res, next) => {
   try {
-    const { type, location, search, page = 1, limit = 20 } = req.query;
+    const { type, location, search, page = 1, limit = 200 } = req.query;
     
     const where = {
       applicationDeadline: {
