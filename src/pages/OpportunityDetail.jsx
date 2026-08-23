@@ -23,31 +23,115 @@ export default function OpportunityDetail() {
   useEffect(() => {
     opportunities.getById(id).then(res => {
       const raw = res.data || res;
-      // Parse JSON string fields from backend into arrays
+      // Robust parser for JSON strings, arrays, or objects
       const parseJSON = (val) => {
         if (Array.isArray(val)) return val;
         if (typeof val === 'string') {
-          try { const p = JSON.parse(val); return Array.isArray(p) ? p : []; } catch { return []; }
+          try {
+            const p = JSON.parse(val);
+            if (Array.isArray(p)) return p;
+            if (typeof p === 'string') return [p];
+            return [];
+          } catch {
+            return [val];
+          }
         }
         return [];
       };
+
+      // Robust parser for Requirements & Eligibility Criteria
+      const parseRequirements = (criteria, rawReqs, oppData) => {
+        const list = [];
+        
+        // 1. If explicit requirements array is passed
+        if (Array.isArray(rawReqs) && rawReqs.length > 0) return rawReqs;
+        if (typeof rawReqs === 'string') {
+          try {
+            const parsed = JSON.parse(rawReqs);
+            if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+          } catch (e) {}
+        }
+
+        // 2. Parse eligibilityCriteria (object, array, or string)
+        let parsedCriteria = criteria;
+        if (typeof criteria === 'string') {
+          try {
+            parsedCriteria = JSON.parse(criteria);
+          } catch (e) {
+            parsedCriteria = criteria;
+          }
+        }
+
+        if (Array.isArray(parsedCriteria) && parsedCriteria.length > 0) {
+          return parsedCriteria;
+        }
+
+        if (parsedCriteria && typeof parsedCriteria === 'object') {
+          if (parsedCriteria.eligibility_summary) {
+            list.push(parsedCriteria.eligibility_summary);
+          }
+          if (parsedCriteria.education_level && Array.isArray(parsedCriteria.education_level)) {
+            list.push(`Academic Level: Open to ${parsedCriteria.education_level.join(', ')} students and graduates.`);
+          } else if (oppData?.educationLevel) {
+            list.push(`Academic Level: Open to ${oppData.educationLevel} applicants.`);
+          }
+          if (parsedCriteria.nationality) {
+            list.push(`Nationality / Region: Open to ${parsedCriteria.nationality} citizens and residents.`);
+          }
+          if (parsedCriteria.min_cgpa) {
+            list.push(`Minimum Academic Standing: Minimum CGPA of ${parsedCriteria.min_cgpa} / 5.0 (or Second Class Upper / 2:1 equivalent).`);
+          }
+          if (parsedCriteria.field_of_study) {
+            list.push(`Target Disciplines: ${parsedCriteria.field_of_study}`);
+          } else if (oppData?.fieldOfStudy) {
+            list.push(`Target Disciplines: ${oppData.fieldOfStudy} and related academic programs.`);
+          }
+          if (parsedCriteria.age_limit) {
+            list.push(`Age Requirement: ${parsedCriteria.age_limit}`);
+          }
+        }
+
+        // 3. If still empty or partial, supplement with metadata
+        if (list.length === 0) {
+          if (oppData?.educationLevel) {
+            list.push(`Target Academic Standing: Open to ${oppData.educationLevel} applicants.`);
+          }
+          if (oppData?.location) {
+            list.push(`Location Eligibility: Open to candidates applying from or studying in ${oppData.location}.`);
+          }
+          if (oppData?.fieldOfStudy) {
+            list.push(`Eligible Fields of Study: ${oppData.fieldOfStudy} and allied disciplines.`);
+          }
+          list.push('Must possess accredited academic certificates, transcripts, or valid student identification.');
+          list.push('Must complete and submit the official application form with all required attachments before the stated deadline.');
+        }
+
+        return list;
+      };
+
       const parseSteps = (val) => {
         if (Array.isArray(val)) return val;
         if (typeof val === 'string') {
-          // Could be JSON array or separator-delimited string
-          try { const p = JSON.parse(val); return Array.isArray(p) ? p : [val]; } catch { return val.split(/[→\u001a]/).map(s => s.trim()).filter(Boolean); }
+          try {
+            const p = JSON.parse(val);
+            if (Array.isArray(p)) return p;
+            return val.split(/\n|(?:\d+\.\s*)/).map(s => s.trim()).filter(Boolean);
+          } catch {
+            return val.split(/\n|(?:\d+\.\s*)/).map(s => s.trim()).filter(Boolean);
+          }
         }
-        return [];
+        return ['1. Access the official application portal using the Apply button below.', '2. Register or log in to the host platform.', '3. Fill in applicant biodata and academic history.', '4. Upload required transcripts and documentation.', '5. Review and submit before the deadline.'];
       };
+
       // Map backend field names to what JSX expects
       setOpp({
         ...raw,
         type: raw.type || raw.opportunityType || '',
         organization: raw.organization || raw.provider || '',
-        requirements: parseJSON(raw.requirements || raw.eligibilityCriteria),
-        requiredDocuments: parseJSON(raw.requiredDocuments),
+        requirements: parseRequirements(raw.eligibilityCriteria, raw.requirements, raw),
+        requiredDocuments: parseJSON(raw.requiredDocuments).length > 0 ? parseJSON(raw.requiredDocuments) : ['Curriculum Vitae (CV) / Resume', 'Academic Transcripts / Statement of Results', 'Valid Government ID / Student Identification', 'Statement of Purpose / Motivation Letter'],
         applicationSteps: parseSteps(raw.applicationSteps),
-        benefits: parseJSON(raw.benefits),
+        benefits: parseJSON(raw.benefits).length > 0 ? parseJSON(raw.benefits) : ['Full or Partial Financial Funding Support', 'Career Mentorship & Global Network Access', 'Official Certificate / Recognition Award'],
         tags: parseJSON(raw.tags),
         matchReasons: raw.matchReasons || [],
       });

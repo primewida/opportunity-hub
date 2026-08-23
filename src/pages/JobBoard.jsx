@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { jobs, opportunities } from '../services/api';
-import { SearchBar, FilterChips, Card, Badge, Button } from '../components/ui';
-import { MapPin, Briefcase, Clock, DollarSign, ExternalLink, RefreshCw } from 'lucide-react';
+import { SearchBar, FilterChips, Card, Badge, Button, Modal } from '../components/ui';
+import { MapPin, Briefcase, Calendar, DollarSign, ExternalLink, RefreshCw, CheckCircle2, FileText, ChevronRight, Share2 } from 'lucide-react';
+import { formatDate } from '../utils/helpers';
 import './JobBoard.css';
 
 export default function JobBoard() {
@@ -15,6 +16,7 @@ export default function JobBoard() {
   const [loading, setLoading] = useState(true);
   const [scraping, setScraping] = useState(false);
   const [error, setError] = useState(null);
+  const [selectedJob, setSelectedJob] = useState(null);
 
   const fetchJobs = () => {
     setLoading(true);
@@ -24,22 +26,45 @@ export default function JobBoard() {
         let tags = [];
         if (Array.isArray(j.tags)) tags = j.tags;
         else if (typeof j.tags === 'string') {
-          try { tags = JSON.parse(j.tags); } catch { tags = []; }
-        } else if (typeof j.requirements === 'string') {
-          try { tags = JSON.parse(j.requirements); } catch { tags = []; }
+          try { const pt = JSON.parse(j.tags); if (Array.isArray(pt)) tags = pt; } catch { tags = []; }
+        }
+
+        let requirements = [];
+        if (Array.isArray(j.requirements)) requirements = j.requirements;
+        else if (typeof j.requirements === 'string') {
+          try {
+            const pr = JSON.parse(j.requirements);
+            if (Array.isArray(pr)) requirements = pr;
+            else if (typeof pr === 'string') requirements = [pr];
+          } catch {
+            requirements = j.requirements.split(/\n|•|-|\*/).map(s => s.trim()).filter(Boolean);
+          }
+        }
+
+        // Ensure default requirements if empty
+        if (requirements.length === 0) {
+          if (tags.length > 0) requirements = tags.map(t => `Demonstrated competence in ${t}`);
+          else requirements = [
+            'Relevant degree, diploma, or equivalent professional qualification in a related discipline.',
+            'Strong analytical, communication, and collaborative team-working abilities.',
+            'Ability to meet delivery milestones and adhere to organizational quality standards.'
+          ];
         }
 
         return {
           ...j,
           id: j.id,
           title: j.title,
-          company: j.companyName || j.company || 'Tech Company',
+          company: j.companyName || j.company || 'Employer / Organization',
           type: j.jobType || j.type || 'Full-time',
-          location: j.location || 'Remote',
+          location: j.location || 'Nigeria & Remote',
           salary: j.salaryRange || j.salary,
           deadline: j.applicationDeadline || j.deadline,
+          description: j.description || 'Exciting career opportunity. Review the requirements and submit your application via the official portal.',
+          responsibilities: j.responsibilities || 'Execute assigned organizational and technical duties, collaborate with team leads, and meet scheduled project deliverables.',
+          requirements,
           applyUrl: j.applyUrl || j.applicationLink || '#',
-          tags: Array.isArray(tags) ? tags : []
+          tags: Array.isArray(tags) && tags.length > 0 ? tags : requirements.slice(0, 3)
         };
       });
       setData(normalized);
@@ -73,7 +98,8 @@ export default function JobBoard() {
       const matchTitle = j.title?.toLowerCase().includes(q);
       const matchCompany = j.company?.toLowerCase().includes(q);
       const matchLoc = j.location?.toLowerCase().includes(q);
-      if (!matchTitle && !matchCompany && !matchLoc) return false;
+      const matchReq = j.requirements?.some(r => r.toLowerCase().includes(q));
+      if (!matchTitle && !matchCompany && !matchLoc && !matchReq) return false;
     }
     if (typeFilter !== 'All') {
       const jType = (j.type || '').toLowerCase();
@@ -83,19 +109,32 @@ export default function JobBoard() {
     return true;
   }), [search, typeFilter, data]);
 
-  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading jobs...</div>;
+  const handleShareJob = (job) => {
+    if (navigator.share) {
+      navigator.share({
+        title: job.title,
+        text: `Job Opening: ${job.title} at ${job.company}`,
+        url: window.location.href,
+      }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(job.applyUrl);
+      alert('Application link copied to clipboard!');
+    }
+  };
+
+  if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading jobs & requirements...</div>;
   if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error: {error.message}</div>;
 
   return (
     <div className="jobs">
       <div className="jobs__header">
         <h1 className="jobs__title">💼 Tech & Graduate Job Board</h1>
-        <p className="jobs__subtitle">Live software engineering, data, design, NYSC and internship opportunities</p>
+        <p className="jobs__subtitle">Live software engineering, data, design, NYSC and NGO career opportunities</p>
       </div>
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <div style={{ flex: 1 }}>
-          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search jobs, tech stacks, companies..." />
+          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search jobs, tech stacks, skills, companies..." />
         </div>
         <button 
           className={`btn btn-icon btn-ghost ${scraping ? 'animate-spin' : ''}`}
@@ -116,41 +155,166 @@ export default function JobBoard() {
 
       <div className="jobs__list">
         {filtered.map(job => (
-          <Card key={job.id} variant="interactive" style={{ marginBottom: 'var(--space-md)' }}>
-            <div className="card-body jobs__card" style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
-              <div className="jobs__card-logo" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', flexShrink: 0 }}>
-                {job.company?.charAt(0).toUpperCase() || 'J'}
-              </div>
-              <div className="jobs__card-info" style={{ flex: 1, minWidth: 0 }}>
-                <h3 className="jobs__card-title" style={{ margin: '0 0 4px', fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
-                <p className="jobs__card-company" style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: 'var(--text-subhead)' }}>{job.company}</p>
-                <div className="jobs__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', fontSize: 'var(--text-caption)', color: 'var(--text-tertiary)', marginBottom: '8px' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {job.location}</span>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {job.type}</span>
-                  {job.salary && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)' }}><DollarSign size={13} /> {job.salary}</span>}
+          <Card 
+            key={job.id} 
+            variant="interactive" 
+            style={{ marginBottom: 'var(--space-md)', cursor: 'pointer' }}
+            onClick={() => setSelectedJob(job)}
+          >
+            <div className="card-body jobs__card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
+                <div className="jobs__card-logo" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', flexShrink: 0 }}>
+                  {job.company?.charAt(0).toUpperCase() || 'J'}
                 </div>
-                {job.tags && job.tags.length > 0 && (
-                  <div className="jobs__card-tags" style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                    {job.tags.slice(0, 4).map(s => <Badge key={s} variant="neutral" size="sm">{s}</Badge>)}
+                <div className="jobs__card-info" style={{ flex: 1, minWidth: 0 }}>
+                  <h3 className="jobs__card-title" style={{ margin: '0 0 4px', fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
+                  <p className="jobs__card-company" style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: 'var(--text-subhead)' }}>{job.company}</p>
+                  <div className="jobs__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', fontSize: 'var(--text-caption)', color: 'var(--text-tertiary)' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {job.location}</span>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {job.type}</span>
+                    {job.salary && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', fontWeight: 600 }}><DollarSign size={13} /> {job.salary}</span>}
                   </div>
-                )}
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                  <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); setSelectedJob(job); }}
+                  >
+                    Requirements
+                  </Button>
+                  <a
+                    href={job.applyUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary btn-sm"
+                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    Apply <ExternalLink size={14} />
+                  </a>
+                </div>
               </div>
-              <div style={{ alignSelf: 'center', flexShrink: 0 }}>
-                <a
-                  href={job.applyUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn btn-primary btn-sm"
-                  style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  Apply <ExternalLink size={14} />
-                </a>
-              </div>
+
+              {/* Requirements & Skills Chips preview */}
+              {job.requirements && job.requirements.length > 0 && (
+                <div style={{ borderTop: '0.5px solid var(--separator)', paddingTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Requirements:</span>
+                  {job.requirements.slice(0, 3).map((req, i) => (
+                    <span key={i} className="chip chip-sm" style={{ fontSize: '11px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                      ✓ {req.length > 35 ? req.slice(0, 35) + '...' : req}
+                    </span>
+                  ))}
+                  {job.requirements.length > 3 && (
+                    <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 600 }}>+{job.requirements.length - 3} more</span>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         ))}
       </div>
+
+      {/* Interactive Job Detail & Requirements Modal */}
+      {selectedJob && (
+        <Modal 
+          isOpen={!!selectedJob} 
+          onClose={() => setSelectedJob(null)}
+          title={selectedJob.title}
+          size="lg"
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+            {/* Header info */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-md)', paddingBottom: 'var(--space-sm)', borderBottom: '0.5px solid var(--separator)' }}>
+              <div style={{ width: 52, height: 52, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '22px', flexShrink: 0 }}>
+                {selectedJob.company?.charAt(0).toUpperCase() || 'J'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <h3 style={{ margin: '0 0 4px', fontSize: 'var(--text-title3)' }}>{selectedJob.title}</h3>
+                <p style={{ margin: 0, color: 'var(--text-secondary)', fontWeight: 500 }}>{selectedJob.company}</p>
+              </div>
+            </div>
+
+            {/* Meta badges */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 'var(--space-xs)' }}>
+              <div style={{ background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                <MapPin size={14} style={{ color: 'var(--color-primary)' }} />
+                <span>{selectedJob.location}</span>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                <Briefcase size={14} style={{ color: 'var(--color-primary)' }} />
+                <span>{selectedJob.type}</span>
+              </div>
+              {selectedJob.salary && (
+                <div style={{ background: 'rgba(52, 199, 89, 0.12)', color: 'var(--color-success)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
+                  <DollarSign size={14} />
+                  <span>{selectedJob.salary}</span>
+                </div>
+              )}
+              {selectedJob.deadline && (
+                <div style={{ background: 'var(--bg-secondary)', padding: '8px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px' }}>
+                  <Calendar size={14} style={{ color: 'var(--color-primary)' }} />
+                  <span>{formatDate(selectedJob.deadline)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Role Overview */}
+            <div>
+              <h4 style={{ margin: '0 0 6px', fontSize: 'var(--text-subhead)', fontWeight: 700, color: 'var(--text-primary)' }}>
+                📌 Role Overview
+              </h4>
+              <p style={{ margin: 0, fontSize: 'var(--text-subhead)', color: 'var(--text-secondary)', lineHeight: 1.6 }}>
+                {selectedJob.description}
+              </p>
+            </div>
+
+            {/* Requirements & Qualifications */}
+            <div>
+              <h4 style={{ margin: '0 0 8px', fontSize: 'var(--text-subhead)', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <CheckCircle2 size={16} style={{ color: 'var(--color-primary)' }} /> Candidate Requirements & Qualifications
+              </h4>
+              <div style={{ background: 'var(--bg-surface)', border: '0.5px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: 'var(--space-md)' }}>
+                <ul style={{ margin: 0, paddingLeft: '18px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {selectedJob.requirements?.map((req, i) => (
+                    <li key={i} style={{ fontSize: 'var(--text-subhead)', color: 'var(--text-primary)', lineHeight: 1.5 }}>
+                      {req}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Core Responsibilities */}
+            {selectedJob.responsibilities && (
+              <div>
+                <h4 style={{ margin: '0 0 6px', fontSize: 'var(--text-subhead)', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <FileText size={16} style={{ color: 'var(--color-primary)' }} /> Key Responsibilities
+                </h4>
+                <p style={{ margin: 0, fontSize: 'var(--text-subhead)', color: 'var(--text-secondary)', lineHeight: 1.6, background: 'var(--bg-secondary)', padding: 'var(--space-md)', borderRadius: 'var(--radius-md)' }}>
+                  {selectedJob.responsibilities}
+                </p>
+              </div>
+            )}
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: 'var(--space-sm)', marginTop: 'var(--space-sm)', paddingTop: 'var(--space-md)', borderTop: '0.5px solid var(--separator)' }}>
+              <Button variant="secondary" onClick={() => handleShareJob(selectedJob)}>
+                <Share2 size={16} /> Share
+              </Button>
+              <a
+                href={selectedJob.applyUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn btn-primary btn-lg"
+                style={{ flex: 1, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+              >
+                <ExternalLink size={18} /> Apply Directly on Official Portal
+              </a>
+            </div>
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
