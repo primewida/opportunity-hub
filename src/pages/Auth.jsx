@@ -29,7 +29,7 @@ export default function Auth() {
   const [appleModalOpen, setAppleModalOpen] = useState(false);
   const [appleEmailInput, setAppleEmailInput] = useState('');
 
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '792079578960-ldu7vu26ao2vqicbu3sfn3eeh78h6ibi.apps.googleusercontent.com';
 
   const handleGoogleCredentialResponse = useCallback(async (response) => {
     if (!response?.credential) return;
@@ -51,12 +51,13 @@ export default function Auth() {
 
   // Initialize official Google Identity Services
   useEffect(() => {
-    if (window.google?.accounts?.id && googleClientId) {
+    if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.initialize({
           client_id: googleClientId,
           callback: handleGoogleCredentialResponse,
           auto_select: false,
+          cancel_on_tap_outside: true,
         });
       } catch (e) {
         console.warn('Google Identity initialization notice:', e);
@@ -121,8 +122,52 @@ export default function Auth() {
 
   const handleTriggerGoogle = () => {
     setError('');
-    // 1. If Google Identity Services SDK is ready with Client ID, trigger official Google One-Tap/Popup
-    if (window.google?.accounts?.id && googleClientId) {
+    // 1. If Google OAuth 2.0 Token Client is available, trigger the native Google Account Selector popup
+    if (window.google?.accounts?.oauth2) {
+      try {
+        const tokenClient = window.google.accounts.oauth2.initTokenClient({
+          client_id: googleClientId,
+          scope: 'email profile openid',
+          prompt: 'select_account',
+          callback: async (tokenResponse) => {
+            if (tokenResponse && tokenResponse.access_token) {
+              setLoading(true);
+              try {
+                const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const userInfo = await userRes.json();
+                if (userInfo.email) {
+                  const profile = await googleLogin({
+                    email: userInfo.email,
+                    firstName: userInfo.given_name || 'Google',
+                    lastName: userInfo.family_name || 'User',
+                    picture: userInfo.picture
+                  });
+                  if (profile?.onboardingCompleted) {
+                    navigate('/', { replace: true });
+                  } else {
+                    navigate('/profile-setup', { replace: true });
+                  }
+                  return;
+                }
+              } catch (err) {
+                setError(err.message || 'Failed to authenticate with Google');
+              } finally {
+                setLoading(false);
+              }
+            }
+          },
+        });
+        tokenClient.requestAccessToken({ prompt: 'select_account' });
+        return;
+      } catch (e) {
+        console.warn('OAuth2 popup client error:', e);
+      }
+    }
+
+    // 2. If Google One-Tap SDK is ready, trigger Google ID prompt
+    if (window.google?.accounts?.id) {
       try {
         window.google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
@@ -134,7 +179,8 @@ export default function Auth() {
         console.warn('Google prompt fallback:', e);
       }
     }
-    // 2. Open styled Google In-App Authentication Modal
+
+    // 3. Fallback: Open styled Google In-App Modal
     setGoogleModalOpen(true);
   };
 
@@ -323,7 +369,7 @@ export default function Auth() {
         <p className="auth__footer">By continuing, you agree to our <a href="#" className="auth__link">Terms</a> and <a href="#" className="auth__link">Privacy Policy</a>.</p>
       </div>
 
-      {/* Styled Google In-App Authentication Dialog */}
+      {/* Styled Google In-App Authentication Dialog (Fallback) */}
       {googleModalOpen && (
         <Modal
           isOpen={googleModalOpen}
@@ -344,44 +390,13 @@ export default function Auth() {
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 4px', fontSize: 'var(--text-title3)' }}>Choose an account</h3>
-              <p style={{ margin: 0, fontSize: 'var(--text-footnote)', color: 'var(--text-secondary)' }}>to continue to OpportunityHub</p>
+              <h3 style={{ margin: '0 0 4px', fontSize: 'var(--text-title3)' }}>Enter Google Account</h3>
+              <p style={{ margin: 0, fontSize: 'var(--text-footnote)', color: 'var(--text-secondary)' }}>to sign in to OpportunityHub</p>
             </div>
 
-            {/* Quick account selector options */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', textAlign: 'left' }}>
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-secondary)', cursor: 'pointer', border: '1px solid var(--border-color)', transition: 'background 0.2s' }}
-                onClick={() => handleGoogleModalSubmit('student@opportunityhub.ng')}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#4285F4', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-                  S
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>Student Scholar</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>student@opportunityhub.ng</div>
-                </div>
-                <CheckCircle2 size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-
-              <div
-                style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-secondary)', cursor: 'pointer', border: '1px solid var(--border-color)', transition: 'background 0.2s' }}
-                onClick={() => handleGoogleModalSubmit('chumnomgyabbi04@gmail.com')}
-              >
-                <div style={{ width: 36, height: 36, borderRadius: '50%', background: '#EA4335', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 600 }}>
-                  G
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: 600 }}>Gyabbi Chumnom</div>
-                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>chumnomgyabbi04@gmail.com</div>
-                </div>
-                <CheckCircle2 size={16} style={{ color: 'var(--color-primary)' }} />
-              </div>
-            </div>
-
-            {/* Custom Google Email Entry */}
-            <div style={{ borderTop: '0.5px solid var(--separator)', paddingTop: '12px', textAlign: 'left' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Or use another Google account:</label>
+            {/* Google Email Entry */}
+            <div style={{ textAlign: 'left' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '6px' }}>Your Gmail / Google Email:</label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input
                   type="email"
