@@ -2,13 +2,21 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp } from '../context/AppContext';
 import { onboarding, categories as catApi } from '../services/api';
-import { NIGERIAN_STATES, EDUCATION_LEVELS, NIGERIAN_UNIVERSITIES, NYSC_STATUSES, INTEREST_TAGS } from '../utils/constants';
+import { 
+  NIGERIAN_STATES, 
+  EDUCATION_LEVELS, 
+  NIGERIAN_UNIVERSITIES, 
+  NIGERIAN_SECONDARY_SCHOOLS, 
+  NIGERIAN_PRIMARY_SCHOOLS, 
+  NYSC_STATUSES, 
+  INTEREST_TAGS 
+} from '../utils/constants';
 import Button from '../components/ui/Button';
 import { ProgressBar } from '../components/ui';
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Check, School, GraduationCap, BookOpen, Award } from 'lucide-react';
 import './ProfileSetup.css';
 
-const steps = ['Basic Info', 'Education', 'Details', 'Interests'];
+const steps = ['Basic Info', 'Education', 'School & Details', 'Interests'];
 
 const GENDER_OPTIONS = [
   { value: 'Male', label: 'Male', icon: '👨' },
@@ -27,7 +35,7 @@ export default function ProfileSetup() {
     name: app.user ? `${app.user.firstName || ''} ${app.user.lastName || ''}`.trim() : '',
     dob: app.user?.dateOfBirth ? new Date(app.user.dateOfBirth).toISOString().split('T')[0] : '',
     gender: app.user?.gender || '',
-    education: app.user?.educationLevel || '',
+    education: app.user?.educationLevel || 'undergraduate',
     state: app.user?.stateOfOrigin || app.user?.currentState || '',
     location: app.user?.currentCity || '',
     institution: app.user?.institutionName || '',
@@ -41,6 +49,11 @@ export default function ProfileSetup() {
 
   const set = (k, v) => setForm((prev) => ({ ...prev, [k]: v }));
   const toggleInterest = (tag) => set('interests', form.interests.includes(tag) ? form.interests.filter(t => t !== tag) : [...form.interests, tag]);
+
+  const eduLower = (form.education || '').toLowerCase();
+  const isPrimary = eduLower.includes('primary');
+  const isSecondary = eduLower.includes('jss') || eduLower.includes('sss') || eduLower.includes('secondary');
+  const isTertiary = !isPrimary && !isSecondary;
 
   const canProceed = () => {
     if (step === 0) return form.name && form.gender;
@@ -132,9 +145,10 @@ export default function ProfileSetup() {
         {step === 1 && (
           <div className="profile-setup__step animate-fadeInUp" key="s1">
             <h2 className="profile-setup__title">Your Education 🎓</h2>
-            <p className="profile-setup__desc">This helps us find the right opportunities for you</p>
+            <p className="profile-setup__desc">Select your current educational level to discover matching grants, scholarships, and competitions</p>
             <div className="profile-setup__fields">
-              <div className="input-group"><label className="profile-setup__label">Education Level</label>
+              <div className="input-group">
+                <label className="profile-setup__label">Current Educational Level</label>
                 <select className="input" value={form.education} onChange={e => set('education', e.target.value)}>
                   <option value="">Select your level</option>
                   {EDUCATION_LEVELS.map(l => <option key={l.value} value={l.value}>{l.label}</option>)}
@@ -146,36 +160,155 @@ export default function ProfileSetup() {
 
         {step === 2 && (
           <div className="profile-setup__step animate-fadeInUp" key="s2">
-            <h2 className="profile-setup__title">Nigerian Specifics 🇳🇬</h2>
-            <p className="profile-setup__desc">Help us match you with location-specific opportunities</p>
+            <h2 className="profile-setup__title">
+              {isPrimary ? 'Primary School & Location 🏫' : isSecondary ? 'Secondary School & Location 🎒' : 'Academic Institution & Location 🇳🇬'}
+            </h2>
+            <p className="profile-setup__desc">
+              {isPrimary ? 'Tell us your primary school and state to discover kid/junior competitions and scholarships' : 
+               isSecondary ? 'Tell us your secondary school, class, and state for WAEC/NECO grants and high school awards' : 
+               'Help us match you with university, state-of-origin, and tertiary opportunities'}
+            </p>
+            
             <div className="profile-setup__fields">
-              <div className="input-group"><label className="profile-setup__label">State of Origin</label>
+              <div className="input-group">
+                <label className="profile-setup__label">State of Origin</label>
                 <select className="input" value={form.state} onChange={e => set('state', e.target.value)}>
                   <option value="">Select state</option>
                   {NIGERIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="input-group"><label className="profile-setup__label">Current Location</label>
+
+              <div className="input-group">
+                <label className="profile-setup__label">Current Location / State</label>
                 <select className="input" value={form.location} onChange={e => set('location', e.target.value)}>
                   <option value="">Select state</option>
                   {NIGERIAN_STATES.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
               </div>
-              <div className="input-group"><label className="profile-setup__label">Institution</label>
-                <input className="input" list="universities" placeholder="Search university..." value={form.institution} onChange={e => set('institution', e.target.value)} />
-                <datalist id="universities">{NIGERIAN_UNIVERSITIES.map(u => <option key={u} value={u} />)}</datalist>
-              </div>
-              <div className="input-group"><label className="profile-setup__label">Course of Study</label><input className="input" placeholder="e.g. Computer Science" value={form.course} onChange={e => set('course', e.target.value)} /></div>
-              <div className="profile-setup__row">
-                <div className="input-group"><label className="profile-setup__label">CGPA (optional)</label><input className="input" type="number" step="0.01" min="0" max="5" placeholder="e.g. 3.7" value={form.cgpa} onChange={e => set('cgpa', e.target.value)} /></div>
-                <div className="input-group"><label className="profile-setup__label">JAMB Score</label><input className="input" type="number" min="0" max="400" placeholder="e.g. 312" value={form.jamb} onChange={e => set('jamb', e.target.value)} /></div>
-              </div>
-              <div className="input-group"><label className="profile-setup__label">NYSC Status</label>
-                <select className="input" value={form.nysc} onChange={e => set('nysc', e.target.value)}>
-                  <option value="">Select status</option>
-                  {NYSC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </div>
+
+              {/* 1. PRIMARY SCHOOL VIEW */}
+              {isPrimary && (
+                <>
+                  <div className="input-group">
+                    <label className="profile-setup__label">Primary School Name</label>
+                    <input 
+                      className="input" 
+                      list="primary-schools" 
+                      placeholder="Type or search your primary school (e.g. Corona Primary School)..." 
+                      value={form.institution} 
+                      onChange={e => set('institution', e.target.value)} 
+                    />
+                    <datalist id="primary-schools">
+                      {NIGERIAN_PRIMARY_SCHOOLS.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                      💡 You can pick from the list or type your primary school name freely if it's not listed.
+                    </span>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="profile-setup__label">Current Class / Level</label>
+                    <input 
+                      className="input" 
+                      placeholder="e.g. Primary 5, Primary 6 (Common Entrance)" 
+                      value={form.course} 
+                      onChange={e => set('course', e.target.value)} 
+                    />
+                  </div>
+                </>
+              )}
+
+              {/* 2. SECONDARY SCHOOL (JSS / SSS) VIEW */}
+              {isSecondary && (
+                <>
+                  <div className="input-group">
+                    <label className="profile-setup__label">Secondary School / College Name</label>
+                    <input 
+                      className="input" 
+                      list="secondary-schools" 
+                      placeholder="Type or search your secondary school (e.g. King's College Lagos, FGC)..." 
+                      value={form.institution} 
+                      onChange={e => set('institution', e.target.value)} 
+                    />
+                    <datalist id="secondary-schools">
+                      {NIGERIAN_SECONDARY_SCHOOLS.map(s => <option key={s} value={s} />)}
+                    </datalist>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                      💡 You can select a school or type your secondary school name freely if not on the list.
+                    </span>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="profile-setup__label">Class & Department / Track</label>
+                    <input 
+                      className="input" 
+                      placeholder="e.g. SS2 Science, SS3 Commercial, JSS 3" 
+                      value={form.course} 
+                      onChange={e => set('course', e.target.value)} 
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="profile-setup__label">WAEC / NECO / BECE Exam Status</label>
+                    <select className="input" value={form.waec} onChange={e => set('waec', e.target.value)}>
+                      <option value="Preparing">Preparing / Enrolled for Exams</option>
+                      <option value="Completed">Completed / Awaiting Results</option>
+                      <option value="Not Applicable">Not Applicable</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
+              {/* 3. TERTIARY / UNIVERSITY VIEW */}
+              {isTertiary && (
+                <>
+                  <div className="input-group">
+                    <label className="profile-setup__label">University / Tertiary Institution</label>
+                    <input 
+                      className="input" 
+                      list="universities" 
+                      placeholder="Type or search your university / polytechnic..." 
+                      value={form.institution} 
+                      onChange={e => set('institution', e.target.value)} 
+                    />
+                    <datalist id="universities">
+                      {NIGERIAN_UNIVERSITIES.map(u => <option key={u} value={u} />)}
+                    </datalist>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)', marginTop: '4px', display: 'block' }}>
+                      💡 You can pick from suggestions or type any university / polytechnic freely.
+                    </span>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="profile-setup__label">Course of Study</label>
+                    <input 
+                      className="input" 
+                      placeholder="e.g. Computer Science, Medicine, Accounting" 
+                      value={form.course} 
+                      onChange={e => set('course', e.target.value)} 
+                    />
+                  </div>
+
+                  <div className="profile-setup__row">
+                    <div className="input-group">
+                      <label className="profile-setup__label">CGPA (optional)</label>
+                      <input className="input" type="number" step="0.01" min="0" max="5" placeholder="e.g. 3.7" value={form.cgpa} onChange={e => set('cgpa', e.target.value)} />
+                    </div>
+                    <div className="input-group">
+                      <label className="profile-setup__label">JAMB Score (optional)</label>
+                      <input className="input" type="number" min="0" max="400" placeholder="e.g. 312" value={form.jamb} onChange={e => set('jamb', e.target.value)} />
+                    </div>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="profile-setup__label">NYSC Status</label>
+                    <select className="input" value={form.nysc} onChange={e => set('nysc', e.target.value)}>
+                      <option value="">Select status</option>
+                      {NYSC_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
