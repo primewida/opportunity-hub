@@ -29,10 +29,10 @@ export default function TopAppBar({ title, onMenuClick }) {
         <button
           className="top-bar__action top-bar__streak"
           onClick={() => navigate('/streak')}
-          aria-label={`Current streak: ${app.user?.streakCount || app.streakData?.currentStreak || 0} days`}
+          aria-label={`Current streak: ${app.streakData?.currentStreakCount ?? app.streakData?.currentStreak ?? app.user?.streakCount ?? 0} days`}
         >
           <Flame size={20} className="streak-flame" />
-          <span className="top-bar__streak-count">{app.streakData?.currentStreak || 0}</span>
+          <span className="top-bar__streak-count">{app.streakData?.currentStreakCount ?? app.streakData?.currentStreak ?? app.user?.streakCount ?? 0}</span>
         </button>
 
         <button

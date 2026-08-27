@@ -184,6 +184,12 @@ export function AppProvider({ children }) {
           const ids = (saved || []).map((s) => s.itemId || s.id);
           dispatch({ type: ActionTypes.SET_SAVED, payload: ids });
         }).catch(() => {});
+        // Load live streak
+        api.streaks.getStreak().then((res) => {
+          if (res?.streak) {
+            dispatch({ type: ActionTypes.SET_STREAK, payload: res.streak });
+          }
+        }).catch(() => {});
       })
       .catch(() => {
         api.clearToken();
@@ -197,6 +203,7 @@ export function AppProvider({ children }) {
     api.setToken(res.token);
     const profile = await api.users.getProfile();
     dispatch({ type: ActionTypes.LOGIN, payload: profile });
+    api.streaks.getStreak().then((s) => s?.streak && dispatch({ type: ActionTypes.SET_STREAK, payload: s.streak })).catch(() => {});
     return profile;
   }, []);
 
@@ -309,6 +316,21 @@ export function AppProvider({ children }) {
     dispatch({ type: ActionTypes.UPDATE_STREAK, payload: streakUpdates });
   }, []);
 
+  const recordDailyActivity = useCallback(async (hours = 1) => {
+    try {
+      const res = await api.streaks.logActivity(hours);
+      if (res?.streak) {
+        dispatch({ type: ActionTypes.SET_STREAK, payload: res.streak });
+      }
+    } catch (e) {
+      // Local graceful fallback if network fails
+      dispatch({ 
+        type: ActionTypes.UPDATE_STREAK, 
+        payload: { currentStreakCount: Math.max(1, (state.streakData?.currentStreakCount || 0)) } 
+      });
+    }
+  }, [state.streakData]);
+
   const value = {
     ...state,
     authLoading,
@@ -328,6 +350,7 @@ export function AppProvider({ children }) {
     addDocument,
     deleteDocument,
     updateStreak,
+    recordDailyActivity,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

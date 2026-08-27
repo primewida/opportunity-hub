@@ -164,9 +164,11 @@ export const messages = {
 /* ── Streak ── */
 export const streak = {
   get: () => get('/streak'),
+  getStreak: () => get('/streak'),
   updateGoals: (data) => put('/streak/goals', data),
-  logActivity: (hoursSpent) => post('/streak/log-activity', { hoursSpent }),
+  logActivity: (hoursSpent = 1) => post('/streak/log-activity', { hoursSpent }),
 };
+export const streaks = streak;
 
 /* ── Leaderboard ── */
 export const leaderboard = {

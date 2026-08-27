@@ -79,6 +79,7 @@ export default function Dashboard() {
 
   const userName = app.user?.firstName || app.user?.name?.split(' ')[0] || 'Student';
   const feedTypes = ['All', 'Scholarships', 'Jobs', 'Internships', 'Training'];
+  const currentStreak = app.streakData?.currentStreakCount ?? app.streakData?.currentStreak ?? stats?.streakDays ?? 0;
   
   if (loading) return <div style={{ padding: '2rem', textAlign: 'center' }}>Loading dashboard...</div>;
   if (error) return <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>Error loading dashboard: {error.message}</div>;
@@ -98,11 +99,13 @@ export default function Dashboard() {
     <div className="dashboard">
       <div className="dashboard__hero">
         <h1 className="dashboard__greeting">{getGreeting(userName)}</h1>
-        <div className="dashboard__streak-card">
+        <div className="dashboard__streak-card" onClick={() => navigate('/streak')} style={{ cursor: 'pointer' }} title="View Streak Details">
           <div className="dashboard__streak-icon"><Flame size={28} /></div>
           <div className="dashboard__streak-info">
-            <span className="dashboard__streak-count">{app.streakData?.currentStreak || 12} Day Streak</span>
-            <span className="dashboard__streak-label">Keep your streak burning! 🔥</span>
+            <span className="dashboard__streak-count">{currentStreak} Day Streak</span>
+            <span className="dashboard__streak-label">
+              {currentStreak > 0 ? 'Keep your streak burning! 🔥' : 'Start your learning streak today! 🚀'}
+            </span>
           </div>
         </div>
       </div>
@@ -145,9 +148,9 @@ export default function Dashboard() {
         </div>
         <div className="dashboard__stats-grid">
           {[
-            { icon: TrendingUp, num: stats?.matchedOpportunities || '23', label: 'New Matches', color: 'var(--color-primary)' },
-            { icon: ClipboardList, num: stats?.applications || '5', label: 'Applications', color: 'var(--color-accent-teal)' },
-            { icon: Flame, num: `${app.streakData?.currentStreak || stats?.streakDays || 12}`, label: 'Day Streak', color: 'var(--color-accent-amber)' },
+            { icon: TrendingUp, num: stats?.matchedOpportunities || topMatches.length || '0', label: 'New Matches', color: 'var(--color-primary)' },
+            { icon: ClipboardList, num: stats?.applications || '0', label: 'Applications', color: 'var(--color-accent-teal)' },
+            { icon: Flame, num: `${currentStreak}`, label: 'Day Streak', color: 'var(--color-accent-amber)' },
           ].map((s, i) => (
             <div key={i} className="dashboard__stat-card" style={{ borderLeftColor: s.color }}>
               <s.icon size={20} style={{ color: s.color }} />
