@@ -359,16 +359,16 @@ function detectProvider(title = '', text = '') {
 }
 
 function extractDeadline(text = '') {
-  const dateRegex = /(?:deadline|closing date|closes on|apply before|due date)[:\s]+([A-Za-z]+ \d{1,2},? \d{4}|\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4})/i;
+  const dateRegex = /(?:deadline|closing date|closes on|apply before|due date|submission deadline)[:\s]+([A-Za-z]+ \d{1,2},? \d{4}|\d{1,2}(?:st|nd|rd|th)? [A-Za-z]+,? \d{4})/i;
   const match = text.match(dateRegex);
   if (match && match[1]) {
     const parsed = new Date(match[1].replace(/(st|nd|rd|th)/, ''));
-    if (!isNaN(parsed.getTime()) && parsed > new Date()) {
+    if (!isNaN(parsed.getTime())) {
       return parsed;
     }
   }
   const future = new Date();
-  future.setDate(future.getDate() + 60 + Math.floor(Math.random() * 30));
+  future.setDate(future.getDate() + 45);
   return future;
 }
 
@@ -572,6 +572,7 @@ export async function scrapeLiveOpportunities() {
         const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
         const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
         const descMatch = itemXml.match(/<description>(.*?)<\/description>/is) || itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
+        const pubDateMatch = itemXml.match(/<pubDate>(.*?)<\/pubDate>/is) || itemXml.match(/<dc:date>(.*?)<\/dc:date>/is);
 
         const rawTitle = titleMatch ? titleMatch[1] : '';
         const rawLink = linkMatch ? linkMatch[1] : '';
@@ -583,6 +584,14 @@ export async function scrapeLiveOpportunities() {
 
         if (!title || !link || title.length < 5) continue;
 
+        let postedAt = new Date();
+        if (pubDateMatch && pubDateMatch[1]) {
+          const parsedPub = new Date(pubDateMatch[1]);
+          if (!isNaN(parsedPub.getTime())) {
+            postedAt = parsedPub;
+          }
+        }
+
         // Resolve direct application link asynchronously
         const directApplyLink = await resolveDirectApplicationLink(link, rawDesc);
 
@@ -590,6 +599,8 @@ export async function scrapeLiveOpportunities() {
         const eduLevel = detectEducationLevel(title, desc);
         const provider = detectProvider(title, desc);
         const deadline = extractDeadline(desc);
+        const isExpired = deadline && new Date(deadline) < new Date();
+        const isActive = !isExpired;
         const bannerColor = BANNER_COLORS[Math.floor(Math.random() * BANNER_COLORS.length)];
 
         const isNigeria = title.toLowerCase().includes('nigeria') || desc.toLowerCase().includes('nigeria') || provider.toLowerCase().includes('nigeria') || feed.name.includes('MySchoolGist');
@@ -612,11 +623,12 @@ export async function scrapeLiveOpportunities() {
           sourceUrl: link,
           applicationLink: directApplyLink || link,
           deadline,
+          postedAt,
           location,
           educationLevel: eduLevel,
           fieldOfStudy: oppType === 'Training Program' ? 'IT/Computer Science' : null,
           bannerColor,
-          isActive: true,
+          isActive,
           eligibilityCriteria: JSON.stringify({
             education_level: [eduLevel],
             nationality: isNigeria ? 'Nigerian' : 'African',
@@ -634,7 +646,7 @@ export async function scrapeLiveOpportunities() {
             data: oppData
           });
           results.push({ id: existing.id, title, type: 'opportunity', status: 'updated' });
-        } else {
+        } else if (isActive) {
           const created = await prisma.opportunity.create({ data: oppData });
           results.push({ id: created.id, title, type: 'opportunity', status: 'created' });
         }

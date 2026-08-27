@@ -6,10 +6,32 @@ export const getOpportunities = async (req, res, next) => {
   try {
     const { type, educationLevel, location, search, minMatch, deadlineBefore, page = 1, limit = 200 } = req.query;
     
+    const now = new Date();
+
+    // 1. Proactively mark expired opportunities as inactive in database
+    await prisma.opportunity.updateMany({
+      where: {
+        isActive: true,
+        deadline: { lt: now }
+      },
+      data: { isActive: false }
+    }).catch(() => {});
+
+    // 2. Trigger auto-refresh if latest opportunity was synced > 1 hour ago
+    const latestOpp = await prisma.opportunity.findFirst({
+      where: { isActive: true },
+      orderBy: { postedAt: 'desc' }
+    });
+
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    if (!latestOpp || new Date(latestOpp.postedAt) < oneHourAgo) {
+      import('../services/scraper.service.js').then(s => s.scrapeLiveFeeds()).catch(() => {});
+    }
+
     const where = {
       isActive: true,
       deadline: {
-        gte: new Date()
+        gte: now
       }
     };
     

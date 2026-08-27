@@ -90,7 +90,7 @@ export default function BrowseOpportunities() {
 
     if (sortBy === 'match') result.sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
     else if (sortBy === 'deadline') result.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-    else if (sortBy === 'newest') result.sort((a, b) => new Date(b.deadline) - new Date(a.deadline));
+    else if (sortBy === 'newest') result.sort((a, b) => new Date(b.postedAt || b.createdAt || b.deadline || 0) - new Date(a.postedAt || a.createdAt || a.deadline || 0));
     return result;
   }, [search, typeFilter, sortBy, filters, data]);
 
