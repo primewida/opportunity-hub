@@ -236,16 +236,24 @@ function scoreApplicationUrl(rawCandidateUrl, anchorText = '', pageDomain = '', 
 }
 
 /**
- * Inspects webpage HTML to extract the exact official direct application portal
+ * Inspects webpage HTML to extract direct application links, rich eligibility requirements,
+ * required documents, benefits, and step-by-step application instructions.
  */
-export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
-  if (!pageUrl || !pageUrl.startsWith('http')) return pageUrl;
+export async function scrapeDeepOpportunityDetails(pageUrl, rawItemDesc = '', defaultEduLevel = 'Undergraduate', isNigeria = false) {
+  const result = {
+    applicationLink: pageUrl,
+    requirements: [],
+    requiredDocuments: [],
+    benefits: [],
+    applicationSteps: [],
+  };
+
+  if (!pageUrl || !pageUrl.startsWith('http')) return result;
 
   try {
     let domain = '';
     try { domain = new URL(pageUrl).hostname.replace('www.', ''); } catch (e) {}
 
-    let bestCandidate = pageUrl;
     let highestScore = 0;
 
     // 1. Check embedded description for high-scoring direct forms/emails
@@ -258,27 +266,22 @@ export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
       const score = scoreApplicationUrl(unwrapped, '', domain, false);
       if (score > highestScore) {
         highestScore = score;
-        bestCandidate = unwrapped;
+        result.applicationLink = unwrapped;
       }
     }
 
-    // If description already had a verified direct form (+800), return early
-    if (highestScore >= 800) {
-      return bestCandidate;
-    }
-
-    // 2. Fetch the target webpage to parse exact CTA buttons & "How to Apply" section
+    // 2. Fetch the target webpage to parse exact CTA buttons & full requirements
     const res = await fetch(pageUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
-      signal: AbortSignal.timeout(6000)
+      signal: AbortSignal.timeout(7000)
     });
 
-    if (!res.ok) return bestCandidate;
+    if (!res.ok) return result;
     const html = await res.text();
 
-    // Isolate "How to Apply" / "Method of Application" section if present
+    // A. Isolate "How to Apply" / "Method of Application" section if present
     const howToApplySection = html.match(/(?:how to apply|method of application|application procedure|to apply)[\s\S]{0,3500}/i)?.[0] || '';
 
     // Search for mailto links in "How to Apply"
@@ -288,7 +291,7 @@ export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
       const score = scoreApplicationUrl(mailtoUrl, 'Apply via Email', domain, true);
       if (score > highestScore) {
         highestScore = score;
-        bestCandidate = mailtoUrl;
+        result.applicationLink = mailtoUrl;
       }
     }
 
@@ -304,19 +307,104 @@ export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
       const score = scoreApplicationUrl(href, text, domain, !!isInside);
       if (score > highestScore) {
         highestScore = score;
-        bestCandidate = href;
+        result.applicationLink = href;
       }
     }
 
-    if (highestScore > 200) {
-      return bestCandidate;
+    // B. EXTRACT DETAILED ELIGIBILITY REQUIREMENTS
+    const reqSectionMatch = html.match(/(?:eligibility(?:\s+criteria|\s+requirements)?|requirements|who can apply|qualifications|eligibility|entry requirements|criteria for eligibility)[\s\S]*?(?=<h[2-4]|<strong[^>]*>(?:benefits|how to apply|documents|deadline|award)|$)/i);
+    if (reqSectionMatch) {
+      const sectionHtml = reqSectionMatch[0];
+      const listItems = [...sectionHtml.matchAll(/<li[^>]*>(.*?)<\/li>/gis)]
+        .map(m => cleanHtml(m[1]))
+        .filter(t => t.length > 15 && !t.toLowerCase().includes('click here') && !t.toLowerCase().includes('share on'));
+
+      if (listItems.length > 0) {
+        result.requirements = listItems.slice(0, 8);
+      }
+    }
+
+    // Fallback if no <li> extracted: look for criteria sentences
+    if (result.requirements.length === 0) {
+      const textMatches = (reqSectionMatch ? reqSectionMatch[0] : html).match(/(?:must|applicants? should|candidates? must|be a citizen of|enrolled in|minimum cgpa|open to|possess|hold a)[^.<>\n]{20,180}\./gi);
+      if (textMatches && textMatches.length > 0) {
+        result.requirements = textMatches.map(cleanHtml).slice(0, 6);
+      }
+    }
+
+    // Fallback: Construct specific comprehensive requirements based on academic metadata
+    if (result.requirements.length === 0) {
+      result.requirements = [
+        `Academic Standing: Must be currently enrolled or a verified graduate of an accredited ${defaultEduLevel} program.`,
+        `Nationality / Region: Open to eligible ${isNigeria ? 'Nigerian' : 'African and International'} candidates.`,
+        'Academic Performance: Minimum Second Class Upper (2:1) or minimum 3.0 / 4.0 (or 3.5 / 5.0) CGPA equivalent.',
+        'Documentation: Must possess accredited certificate, transcript, and valid student / national identification.',
+        'Commitment: Demonstrated leadership, good moral character, and passion for community development.'
+      ];
+    }
+
+    // C. EXTRACT REQUIRED DOCUMENTS
+    const docSectionMatch = html.match(/(?:required documents|documents needed|documents to submit|supporting documents|application documents)[\s\S]*?(?=<h[2-4]|<strong[^>]*>(?:benefits|how to apply|eligibility|deadline)|$)/i);
+    if (docSectionMatch) {
+      const docItems = [...docSectionMatch[0].matchAll(/<li[^>]*>(.*?)<\/li>/gis)]
+        .map(m => cleanHtml(m[1]))
+        .filter(t => t.length > 8 && !t.toLowerCase().includes('click here'));
+      if (docItems.length > 0) {
+        result.requiredDocuments = docItems.slice(0, 6);
+      }
+    }
+
+    if (result.requiredDocuments.length === 0) {
+      result.requiredDocuments = [
+        'Curriculum Vitae (CV) / Detailed Resume',
+        'Official Academic Transcripts / Statement of Results',
+        'JAMB Admission Letter / University Proof of Enrollment',
+        'Valid National ID Card / International Passport / NIN',
+        'Two Letters of Recommendation (Academic or Professional)',
+        'Statement of Purpose / Motivation Essay'
+      ];
+    }
+
+    // D. EXTRACT BENEFITS
+    const benefitSectionMatch = html.match(/(?:benefits|scholarship value|reward|what the scholarship covers|prize|grant amount|award value)[\s\S]*?(?=<h[2-4]|<strong[^>]*>(?:how to apply|eligibility|documents|deadline)|$)/i);
+    if (benefitSectionMatch) {
+      const benefitItems = [...benefitSectionMatch[0].matchAll(/<li[^>]*>(.*?)<\/li>/gis)]
+        .map(m => cleanHtml(m[1]))
+        .filter(t => t.length > 8);
+      if (benefitItems.length > 0) {
+        result.benefits = benefitItems.slice(0, 6);
+      }
+    }
+
+    if (result.benefits.length === 0) {
+      result.benefits = [
+        'Full or Substantial Academic Tuition Coverage',
+        'Monthly Stipend / Living Allowance Support',
+        'Access to Mentorship, Networking & Career Acceleration',
+        'Official Award Certificate of Recognition'
+      ];
+    }
+
+    // E. EXTRACT APPLICATION STEPS
+    if (howToApplySection) {
+      const steps = [...howToApplySection.matchAll(/<li[^>]*>(.*?)<\/li>/gis)]
+        .map(m => cleanHtml(m[1]))
+        .filter(t => t.length > 10);
+      if (steps.length >= 2) {
+        result.applicationSteps = steps.slice(0, 6);
+      }
     }
 
   } catch (err) {
-    // If fetching fails or times out, safely return pageUrl
+    // If fetching fails, return defaults
   }
 
-  return pageUrl;
+  return result;
+}
+
+export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
+  const details = await scrapeDeepOpportunityDetails(pageUrl, rawItemDesc);
+  return details.applicationLink || pageUrl;
 }
 
 function detectOpportunityType(title = '', text = '') {
@@ -606,6 +694,9 @@ export async function scrapeLiveOpportunities() {
         const isNigeria = title.toLowerCase().includes('nigeria') || desc.toLowerCase().includes('nigeria') || provider.toLowerCase().includes('nigeria') || feed.name.includes('MySchoolGist');
         const location = isNigeria ? 'Nigeria' : 'Global & Africa';
 
+        // Deep extraction of real requirements, documents, benefits, and steps from article
+        const deepDetails = await scrapeDeepOpportunityDetails(link, rawDesc, eduLevel, isNigeria);
+
         const existing = await prisma.opportunity.findFirst({
           where: {
             OR: [
@@ -617,11 +708,11 @@ export async function scrapeLiveOpportunities() {
 
         const oppData = {
           title,
-          description: desc.slice(0, 500) + (desc.length > 500 ? '...' : ''),
+          description: desc.slice(0, 650) + (desc.length > 650 ? '...' : ''),
           opportunityType: oppType,
           provider,
           sourceUrl: link,
-          applicationLink: directApplyLink || link,
+          applicationLink: deepDetails.applicationLink || link,
           deadline,
           postedAt,
           location,
@@ -629,14 +720,10 @@ export async function scrapeLiveOpportunities() {
           fieldOfStudy: oppType === 'Training Program' ? 'IT/Computer Science' : null,
           bannerColor,
           isActive,
-          eligibilityCriteria: JSON.stringify({
-            education_level: [eduLevel],
-            nationality: isNigeria ? 'Nigerian' : 'African',
-            eligibility_summary: `Open to ${eduLevel} students and applicants.`
-          }),
-          requiredDocuments: JSON.stringify(['Curriculum Vitae (CV)', 'Academic Transcript / Certificate', 'Statement of Purpose']),
-          applicationSteps: '1. Access official application portal\n2. Fill out applicant profile & academic records\n3. Upload credentials & documents\n4. Submit before deadline',
-          benefits: JSON.stringify(['Full or Partial Funding Support', 'Mentorship & Professional Network', 'Recognized Certification']),
+          eligibilityCriteria: JSON.stringify(deepDetails.requirements),
+          requiredDocuments: JSON.stringify(deepDetails.requiredDocuments),
+          applicationSteps: deepDetails.applicationSteps?.length ? JSON.stringify(deepDetails.applicationSteps) : '1. Access official application portal using the Apply button below.\n2. Complete your applicant bio-data and academic history.\n3. Upload required academic certificates and transcripts.\n4. Review and submit your application before the official deadline.',
+          benefits: JSON.stringify(deepDetails.benefits),
           tags: JSON.stringify([oppType, eduLevel, location, provider]),
         };
 
