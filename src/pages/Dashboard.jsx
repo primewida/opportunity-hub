@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Flame, ChevronRight, TrendingUp, ClipboardList, Sparkles, MessageSquare } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card, OpportunityCard, ProgressBar, FilterChips } from '../components/ui';
-import { getGreeting } from '../utils/helpers';
+import { getGreeting, calculateMatchPercentage } from '../utils/helpers';
 import { dashboard, opportunities, jobs, roadmaps, community } from '../services/api';
 import './Dashboard.css';
 
@@ -49,14 +49,24 @@ export default function Dashboard() {
         applyUrl: j.applyUrl || j.applicationLink || '#'
       }));
 
+      const scoredOpps = opps.map(o => ({
+        ...o,
+        matchPercentage: calculateMatchPercentage(app.user, o)
+      })).sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
+
+      const scoredJobs = loadedJobs.map(j => ({
+        ...j,
+        matchPercentage: calculateMatchPercentage(app.user, j)
+      })).sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
+
       const roads = roadmapsRes.data || roadmapsRes;
       const posts = commRes.data || commRes;
       
       setDashboardData({
-        topMatches: [...opps].sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0)).slice(0, 6),
+        topMatches: scoredOpps.slice(0, 6),
         activeRoadmap: Array.isArray(roads) ? roads.find(r => r.progress > 0 && r.progress < 100) : null,
-        feedOpps: opps,
-        jobList: loadedJobs,
+        feedOpps: scoredOpps,
+        jobList: scoredJobs,
         communityPosts: Array.isArray(posts) ? posts : [],
         stats: dashRes?.stats || null
       });
@@ -65,7 +75,7 @@ export default function Dashboard() {
       setError(err);
       setLoading(false);
     });
-  }, []);
+  }, [app.user]);
 
   const userName = app.user?.firstName || app.user?.name?.split(' ')[0] || 'Student';
   const feedTypes = ['All', 'Scholarships', 'Jobs', 'Internships', 'Training'];

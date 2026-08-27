@@ -137,43 +137,175 @@ export function generateId() {
   return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+function normalizeEdu(level = '') {
+  const l = (level || '').toLowerCase().trim();
+  if (l.includes('primary') || l.includes('basic') || l.includes('elementary')) return 'primary';
+  if (l.includes('jss') || l.includes('junior secondary')) return 'jss';
+  if (l.includes('sss') || l.includes('senior secondary') || l.includes('high school') || l.includes('waec') || l.includes('neco') || l.includes('secondary')) return 'sss';
+  if (l.includes('phd') || l.includes('doctorate') || l.includes('postdoc')) return 'phd';
+  if (l.includes('master') || l.includes('postgraduate') || l.includes('msc') || l.includes('mba')) return 'masters';
+  if (l.includes('nysc') || l.includes('corps member')) return 'nysc';
+  if (l.includes('graduate') || l.includes('alumni')) return 'graduate';
+  if (l.includes('undergrad') || l.includes('bachelor') || l.includes('bsc') || l.includes('university') || l.includes('polytechnic') || l.includes('college')) return 'undergraduate';
+  return 'undergraduate';
+}
+
+function getFieldKeywords(field = '') {
+  const f = (field || '').toLowerCase();
+  const clusters = {
+    tech: ['computer', 'software', 'data', 'artificial intelligence', 'ai', 'cyber', 'tech', 'programming', 'developer', 'it', 'cloud', 'information technology', 'systems'],
+    engineering: ['engineering', 'mechanical', 'electrical', 'civil', 'chemical', 'petroleum', 'mechatronics', 'aerospace', 'robotics'],
+    health: ['medicine', 'surgery', 'nursing', 'pharmacy', 'health', 'medical', 'biochemistry', 'biology', 'public health', 'dentistry', 'biomedical'],
+    business: ['business', 'accounting', 'finance', 'economics', 'banking', 'management', 'marketing', 'commerce', 'entrepreneurship'],
+    law_arts: ['law', 'legal', 'policy', 'political', 'arts', 'media', 'mass comm', 'journalism', 'design', 'creative', 'literature', 'humanities'],
+    science: ['physics', 'chemistry', 'mathematics', 'statistics', 'geology', 'geosciences', 'science', 'environmental']
+  };
+
+  const matched = [];
+  for (const [key, terms] of Object.entries(clusters)) {
+    if (terms.some(t => f.includes(t))) {
+      matched.push(key);
+    }
+  }
+  return matched;
+}
+
 /**
- * Calculate a mock match percentage between a user profile and opportunity requirements.
- * Returns a deterministic-looking value between 60 and 95.
+ * Calculate intelligent match percentage between a user profile and an opportunity or job.
  * @param {object} profile - User profile object
- * @param {object} requirements - Opportunity requirements object
- * @returns {number}
+ * @param {object} opportunity - Opportunity or Job object
+ * @returns {number} 35–98
  */
-export function calculateMatchPercentage(profile, requirements) {
-  if (!profile || !requirements) return 75;
+export function calculateMatchPercentage(profile, opportunity) {
+  if (!profile || !opportunity) return opportunity?.matchPercentage || 65;
 
-  let score = 70;
+  let score = 0;
+  const userEdu = normalizeEdu(profile.educationLevel || profile.education || 'undergraduate');
+  const oppEdu = normalizeEdu(opportunity.educationLevel || opportunity.education || '');
+  const oppTitleDesc = `${opportunity.title || ''} ${opportunity.description || ''} ${opportunity.responsibilities || ''}`.toLowerCase();
 
-  // Boost if education level matches
-  if (requirements.educationLevel && profile.educationLevel === requirements.educationLevel) {
-    score += 8;
+  // 1. Education Level Matching (35 Points)
+  if (userEdu === 'primary') {
+    if (oppEdu === 'primary' || oppTitleDesc.includes('primary') || oppTitleDesc.includes('kids') || oppTitleDesc.includes('junior')) {
+      score += 35;
+    } else if (oppEdu === 'undergraduate' || oppEdu === 'masters' || oppEdu === 'phd') {
+      score -= 50;
+    } else {
+      score += 15;
+    }
+  } else if (userEdu === 'jss' || userEdu === 'sss') {
+    if (oppEdu === 'sss' || oppEdu === 'jss' || oppTitleDesc.includes('secondary') || oppTitleDesc.includes('high school') || oppTitleDesc.includes('waec') || oppTitleDesc.includes('neco')) {
+      score += 35;
+    } else if (oppEdu === 'masters' || oppEdu === 'phd') {
+      score -= 45;
+    } else {
+      score += 15;
+    }
+  } else if (userEdu === 'undergraduate') {
+    if (oppEdu === 'undergraduate' || oppTitleDesc.includes('undergraduate') || oppTitleDesc.includes('university') || oppTitleDesc.includes('polytechnic') || oppTitleDesc.includes('bachelor')) {
+      score += 35;
+    } else if (oppEdu === 'primary') {
+      score -= 40;
+    } else if (oppEdu === 'masters') {
+      score += 12;
+    } else {
+      score += 20;
+    }
+  } else if (userEdu === 'masters' || userEdu === 'phd') {
+    if (oppEdu === 'masters' || oppEdu === 'phd' || oppTitleDesc.includes('postgraduate') || oppTitleDesc.includes('master') || oppTitleDesc.includes('phd') || oppTitleDesc.includes('fellowship')) {
+      score += 35;
+    } else if (oppEdu === 'primary' || oppEdu === 'sss') {
+      score -= 40;
+    } else {
+      score += 20;
+    }
+  } else if (userEdu === 'nysc' || userEdu === 'graduate') {
+    if (oppEdu === 'nysc' || oppEdu === 'graduate' || oppTitleDesc.includes('nysc') || oppTitleDesc.includes('graduate') || oppTitleDesc.includes('job') || oppTitleDesc.includes('entry level')) {
+      score += 35;
+    } else {
+      score += 22;
+    }
   }
 
-  // Boost if field of study matches
-  if (requirements.fieldOfStudy && profile.fieldOfStudy === requirements.fieldOfStudy) {
-    score += 7;
+  // 2. Field of Study / Course Matching (25 Points)
+  const userCourse = (profile.courseOfStudy || profile.course || '').toLowerCase().trim();
+  const oppField = (opportunity.fieldOfStudy || '').toLowerCase().trim();
+
+  if (userCourse) {
+    const userClusters = getFieldKeywords(userCourse);
+    const oppClusters = getFieldKeywords(`${oppField} ${oppTitleDesc}`);
+
+    const hasClusterOverlap = userClusters.some(c => oppClusters.includes(c));
+    const directCourseMatch = userCourse.length > 3 && (oppField.includes(userCourse) || oppTitleDesc.includes(userCourse));
+
+    if (directCourseMatch) {
+      score += 25;
+    } else if (hasClusterOverlap) {
+      score += 22;
+    } else if (!oppField || oppField === 'general' || oppField.includes('all') || oppTitleDesc.includes('all disciplines')) {
+      score += 15;
+    } else {
+      score += 5;
+    }
+  } else {
+    score += 15;
   }
 
-  // Boost if state matches
-  if (requirements.state && profile.state === requirements.state) {
+  // 3. User Interests & Aspirations (20 Points)
+  const userInterests = Array.isArray(profile.interests)
+    ? profile.interests.map(i => (typeof i === 'string' ? i : i.name || '').toLowerCase())
+    : [];
+
+  const oppTags = Array.isArray(opportunity.tags) ? opportunity.tags.map(t => String(t).toLowerCase()) : [];
+
+  if (userInterests.length > 0) {
+    let matchedCount = 0;
+    for (const interest of userInterests) {
+      if (
+        oppTags.some(t => t.includes(interest)) ||
+        oppTitleDesc.includes(interest) ||
+        (oppField && oppField.includes(interest))
+      ) {
+        matchedCount++;
+      }
+    }
+
+    if (matchedCount >= 3) score += 20;
+    else if (matchedCount === 2) score += 16;
+    else if (matchedCount === 1) score += 12;
+    else score += 4;
+  } else {
+    score += 12;
+  }
+
+  // 4. Location & State of Origin (10 Points)
+  const userState = (profile.stateOfOrigin || profile.currentState || profile.state || '').toLowerCase();
+  const oppLoc = (opportunity.location || '').toLowerCase();
+
+  if (oppLoc.includes('remote') || oppLoc.includes('global') || oppLoc.includes('nigeria') || oppLoc.includes('africa')) {
+    score += 10;
+  } else if (userState && oppLoc.includes(userState)) {
+    score += 10;
+  } else {
     score += 5;
   }
 
-  // Boost based on matching interests
-  if (requirements.tags && profile.interests) {
-    const matchingInterests = profile.interests.filter((interest) =>
-      requirements.tags.includes(interest)
-    );
-    score += Math.min(matchingInterests.length * 3, 10);
+  // 5. Gender Filter
+  const genderKeywords = {
+    female: ['women in tech', 'women', 'female', 'girls', 'she code', 'girl child', 'women only'],
+    male: ['men only', 'male only', 'boys only']
+  };
+
+  const isFemaleOnly = genderKeywords.female.some(kw => oppTitleDesc.includes(kw));
+  const isMaleOnly = genderKeywords.male.some(kw => oppTitleDesc.includes(kw));
+
+  if (profile.gender) {
+    const g = profile.gender.toLowerCase();
+    if (isFemaleOnly && g !== 'female') score -= 50;
+    else if (isMaleOnly && g !== 'male') score -= 50;
   }
 
-  // Clamp to 60-95
-  return Math.max(60, Math.min(95, score));
+  return Math.round(Math.min(98, Math.max(35, score)));
 }
 
 /**
