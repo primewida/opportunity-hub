@@ -101,61 +101,138 @@ function cleanHtml(raw) {
     .trim();
 }
 
-function isDirectPortalUrl(url, pageDomain = '') {
-  if (!url) return false;
-  const u = url.toLowerCase();
+function unwrapRedirectUrl(rawUrl) {
+  if (!rawUrl) return rawUrl;
+  try {
+    const u = new URL(rawUrl);
+    for (const key of ['url', 'target', 'link', 'dest', 'to', 'redirect', 'goto']) {
+      const val = u.searchParams.get(key);
+      if (val && val.startsWith('http')) {
+        return decodeURIComponent(val);
+      }
+    }
+  } catch (e) {}
+  return rawUrl;
+}
 
-  // Filter out social networks, search engines, CMS internals
-  if (
-    u.includes('facebook.com') ||
-    u.includes('twitter.com') ||
-    u.includes('x.com') ||
-    u.includes('whatsapp.com') ||
-    u.includes('linkedin.com/sharing') ||
-    u.includes('instagram.com') ||
-    u.includes('pinterest.com') ||
-    u.includes('t.me') ||
-    u.includes('youtube.com') ||
-    u.includes('wp-content') ||
-    u.includes('wp-admin') ||
-    u.includes('gravatar.com') ||
-    u.includes('schema.org') ||
-    u.includes('w3.org') ||
-    u.includes('google.com/search') ||
-    (pageDomain && u.includes(pageDomain))
-  ) {
-    return false;
+function scoreApplicationUrl(rawCandidateUrl, anchorText = '', pageDomain = '', isInsideHowToApply = false) {
+  if (!rawCandidateUrl || typeof rawCandidateUrl !== 'string') return -9999;
+  const candidateUrl = unwrapRedirectUrl(rawCandidateUrl.trim());
+  if (candidateUrl.startsWith('#') || candidateUrl.startsWith('javascript:')) return -9999;
+
+  const u = candidateUrl.toLowerCase();
+  const text = (anchorText || '').toLowerCase().trim();
+
+  // 1. Blacklist: Social networks, CMS internals, analytics, feed site internals
+  const BLACKLIST = [
+    'facebook.com', 'twitter.com', 'x.com', 'whatsapp.com', 'linkedin.com/sharing',
+    'instagram.com', 'pinterest.com', 't.me', 'telegram.me', 'youtube.com',
+    'wp-content', 'wp-admin', 'wp-includes', 'gravatar.com', 'schema.org', 'w3.org',
+    'google.com/search', 'play.google.com', 'apps.apple.com', 'disqus.com',
+    'scholarshipregion.com', 'opportunitydesk.org', 'myschoolgist.com',
+    'opportunitiesforafricans.com', 'myngojobs.com', 'hotnigerianjobs.com',
+    'ngojobsinafrica.com', 'youthhubafrica.org', 'wordpress.org', 'feedproxy.google.com',
+    'bit.ly/donate', 'buymeacoffee.com', 'patreon.com'
+  ];
+
+  if (BLACKLIST.some(b => u.includes(b))) return -9999;
+  if (pageDomain && u.includes(pageDomain.toLowerCase())) return -9999;
+
+  let score = 0;
+
+  // 2. Direct Application & Form Engines (+1000)
+  const FORM_ENGINES = [
+    'forms.gle', 'docs.google.com/forms', 'submittable.com', 'geckoform.com',
+    'forms.office.com', 'forms.microsoft.com', 'typeform.com', 'airtable.com/app',
+    'airtable.com/shr', 'survey.zohopublic.com', 'forms.zohopublic.com',
+    'surveymonkey.com', 'formstack.com', 'jotform.com', 'qualtrics.com',
+    'scholarship.ptdf.gov.ng', 'chevening.org/apply', 'mastercardfdn.org/all/scholars/apply'
+  ];
+  if (FORM_ENGINES.some(f => u.includes(f))) score += 1000;
+
+  // 3. Enterprise ATS & Career Application Systems (+850)
+  const ATS_PLATFORMS = [
+    'boards.greenhouse.io', 'jobs.lever.co', 'myworkdayjobs.com', 'workday.com',
+    'jobs.smartrecruiters.com', 'smartrecruiters.com/jobs', 'apply.workable.com',
+    'bamboohr.com/careers', 'bamboohr.com/jobs', 'jobs.ashbyhq.com', 'recruitee.com',
+    'applytojob.com', 'jobscore.com', 'taleo.net', 'icims.com', 'jobvite.com',
+    'rippling.com/jobs', 'careers-page.com', 'pinpointhq.com', 'workable.com/j/'
+  ];
+  if (ATS_PLATFORMS.some(a => u.includes(a))) score += 850;
+
+  // 4. Dedicated Recruitment / Application Emails (+800)
+  if (u.startsWith('mailto:')) {
+    if (u.includes('apply') || u.includes('career') || u.includes('recruit') || u.includes('job') || u.includes('scholarship') || u.includes('application')) {
+      score += 800;
+    } else {
+      score += 450;
+    }
   }
 
-  // Positive ATS / Application Portals
-  return (
-    u.startsWith('mailto:') ||
-    u.includes('forms.gle') ||
-    u.includes('docs.google.com/forms') ||
-    u.includes('submittable.com') ||
-    u.includes('geckoform.com') ||
-    u.includes('greenhouse.io') ||
-    u.includes('lever.co') ||
-    u.includes('workday.com') ||
-    u.includes('myworkdayjobs.com') ||
-    u.includes('smartrecruiters.com') ||
-    u.includes('taleo.net') ||
-    u.includes('bamboohr.com') ||
-    u.includes('recruitee.com') ||
-    u.includes('applytojob.com') ||
-    u.includes('jobscore.com') ||
-    u.includes('/careers') ||
-    u.includes('/apply') ||
-    u.includes('/jobs/') ||
-    u.includes('/application') ||
-    u.includes('/scholarship') ||
-    u.includes('.edu/') ||
-    u.includes('.ac.uk/') ||
-    u.includes('.gov/') ||
-    u.includes('.org/') ||
-    u.includes('survey.zohopublic.com') ||
-    u.includes('typeform.com')
-  );
+  // 5. Explicit Call-To-Action Text Matching (+650)
+  if (
+    text === 'apply now' ||
+    text === 'apply here' ||
+    text === 'click here to apply' ||
+    text === 'click here to apply online' ||
+    text === 'official application link' ||
+    text === 'online application form' ||
+    text === 'submit your application' ||
+    text === 'start application' ||
+    text === 'register here' ||
+    text === 'apply online' ||
+    text === 'official application portal' ||
+    text === 'apply' ||
+    text === 'application form'
+  ) {
+    score += 650;
+  } else if (
+    text.includes('apply') ||
+    text.includes('application') ||
+    text.includes('portal') ||
+    text.includes('register') ||
+    text.includes('submit application')
+  ) {
+    score += 350;
+  }
+
+  // 6. Deep Application Path Keywords (+300)
+  try {
+    const parsed = new URL(candidateUrl);
+    const path = parsed.pathname.toLowerCase();
+    const query = parsed.search.toLowerCase();
+
+    if (
+      path.includes('/apply') ||
+      path.includes('/application') ||
+      path.includes('/register') ||
+      path.includes('/submit') ||
+      path.includes('/scholarship') ||
+      path.includes('/fellowship') ||
+      path.includes('/admissions/apply') ||
+      path.includes('/jobs/') ||
+      path.includes('/career') ||
+      query.includes('apply=') ||
+      query.includes('job_id=') ||
+      query.includes('id=')
+    ) {
+      score += 300;
+    }
+
+    // Heavy Penalty for Bare Root Homepages (e.g. https://who.int or https://cam.ac.uk/)
+    if (path === '/' || path === '' || path === '/en' || path === '/en/') {
+      score -= 600;
+    }
+  } catch (e) {
+    score -= 100;
+  }
+
+  // 7. Bonus if extracted from "How to Apply" section (+300)
+  if (isInsideHowToApply) {
+    score += 300;
+  }
+
+  return score;
 }
 
 /**
@@ -168,18 +245,29 @@ export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
     let domain = '';
     try { domain = new URL(pageUrl).hostname.replace('www.', ''); } catch (e) {}
 
-    // 1. Check if description has embedded mailto or direct forms
+    let bestCandidate = pageUrl;
+    let highestScore = 0;
+
+    // 1. Check embedded description for high-scoring direct forms/emails
     const directMatches = [
       ...rawItemDesc.matchAll(/href=["'](https?:\/\/[^"']+|mailto:[^"']+)["']/gis)
     ].map(m => m[1]);
 
     for (const link of directMatches) {
-      if (isDirectPortalUrl(link, domain)) {
-        return link;
+      const unwrapped = unwrapRedirectUrl(link);
+      const score = scoreApplicationUrl(unwrapped, '', domain, false);
+      if (score > highestScore) {
+        highestScore = score;
+        bestCandidate = unwrapped;
       }
     }
 
-    // 2. Fetch the target webpage to parse the "Click here to apply" button
+    // If description already had a verified direct form (+800), return early
+    if (highestScore >= 800) {
+      return bestCandidate;
+    }
+
+    // 2. Fetch the target webpage to parse exact CTA buttons & "How to Apply" section
     const res = await fetch(pageUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -187,43 +275,41 @@ export async function resolveDirectApplicationLink(pageUrl, rawItemDesc = '') {
       signal: AbortSignal.timeout(6000)
     });
 
-    if (!res.ok) return pageUrl;
+    if (!res.ok) return bestCandidate;
     const html = await res.text();
 
-    const anchors = [...html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis)];
-    
-    // Priority A: Anchor text containing explicit application keywords
-    for (const a of anchors) {
-      const href = a[1];
-      const text = a[2].replace(/<[^>]+>/g, '').trim().toLowerCase();
-      
-      if (!isDirectPortalUrl(href, domain)) continue;
+    // Isolate "How to Apply" / "Method of Application" section if present
+    const howToApplySection = html.match(/(?:how to apply|method of application|application procedure|to apply)[\s\S]{0,3500}/i)?.[0] || '';
 
-      if (
-        text.includes('apply') ||
-        text.includes('application') ||
-        text.includes('official') ||
-        text.includes('click here') ||
-        text.includes('portal') ||
-        text.includes('register') ||
-        text.includes('submit')
-      ) {
-        return href;
-      }
-    }
-
-    // Priority B: Any valid external portal link (GeckoForm, Google Form, University Subdomain, etc.)
-    for (const a of anchors) {
-      const href = a[1];
-      if (isDirectPortalUrl(href, domain)) {
-        return href;
-      }
-    }
-
-    // Priority C: Mailto link for job applications
-    const mailtoMatch = html.match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+    // Search for mailto links in "How to Apply"
+    const mailtoMatch = (howToApplySection || html).match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
     if (mailtoMatch && mailtoMatch[1]) {
-      return `mailto:${mailtoMatch[1]}`;
+      const mailtoUrl = `mailto:${mailtoMatch[1]}`;
+      const score = scoreApplicationUrl(mailtoUrl, 'Apply via Email', domain, true);
+      if (score > highestScore) {
+        highestScore = score;
+        bestCandidate = mailtoUrl;
+      }
+    }
+
+    // Parse all anchors across the full page and inside "How to Apply"
+    const anchors = [...html.matchAll(/<a\s+[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis)];
+
+    for (const a of anchors) {
+      const rawHref = a[1];
+      const text = a[2].replace(/<[^>]+>/g, '').trim();
+      const href = unwrapRedirectUrl(rawHref);
+      const isInside = howToApplySection && howToApplySection.includes(rawHref);
+
+      const score = scoreApplicationUrl(href, text, domain, !!isInside);
+      if (score > highestScore) {
+        highestScore = score;
+        bestCandidate = href;
+      }
+    }
+
+    if (highestScore > 200) {
+      return bestCandidate;
     }
 
   } catch (err) {
@@ -887,6 +973,56 @@ export async function scrapeLiveJobs() {
 }
 
 /**
+ * Automatically repairs and upgrades stored opportunities and jobs that have root or generic URLs
+ */
+export async function repairExistingApplicationLinks() {
+  console.log('🔧 Upgrading existing stored opportunities to direct application portals...');
+  try {
+    const opps = await prisma.opportunity.findMany({
+      where: { isActive: true },
+      take: 60
+    });
+
+    for (const opp of opps) {
+      const currentLink = opp.applicationLink || opp.sourceUrl;
+      if (!currentLink) continue;
+
+      let isRootOrGeneric = false;
+      try {
+        const u = new URL(currentLink);
+        if (
+          u.pathname === '/' ||
+          u.pathname === '' ||
+          u.pathname === '/en' ||
+          u.pathname === '/en/' ||
+          opp.applicationLink === opp.sourceUrl ||
+          u.hostname.includes('scholarshipregion') ||
+          u.hostname.includes('opportunitydesk') ||
+          u.hostname.includes('opportunitiesforafricans')
+        ) {
+          isRootOrGeneric = true;
+        }
+      } catch (e) {
+        isRootOrGeneric = true;
+      }
+
+      if (isRootOrGeneric && opp.sourceUrl) {
+        const directLink = await resolveDirectApplicationLink(opp.sourceUrl, opp.description);
+        if (directLink && directLink !== opp.applicationLink && directLink.startsWith('http')) {
+          await prisma.opportunity.update({
+            where: { id: opp.id },
+            data: { applicationLink: directLink }
+          });
+          console.log(`  Updated [${opp.title.slice(0, 30)}...] -> ${directLink}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('  ⚠️ Repair existing links notice:', err.message);
+  }
+}
+
+/**
  * Scrapes all opportunity and job portals concurrently
  */
 export async function scrapeLiveFeeds() {
@@ -895,10 +1031,14 @@ export async function scrapeLiveFeeds() {
     scrapeLiveJobs()
   ]);
 
+  try {
+    await repairExistingApplicationLinks();
+  } catch (err) {}
+
   const oppResults = opps.status === 'fulfilled' ? opps.value : [];
   const jobResults = jobs.status === 'fulfilled' ? jobs.value : [];
   const total = [...oppResults, ...jobResults];
 
-  console.log(`✅ Integrated scraping complete. Synchronized ${oppResults.length} opportunities and ${jobResults.length} jobs.`);
+  console.log(`✅ Integrated scraping complete. Synchronized ${oppResults.length} opportunities and ${jobResults.length} jobs with deep direct links.`);
   return total;
 }
