@@ -125,6 +125,7 @@ export default function BrowseOpportunities() {
         <SearchBar 
           value={search} 
           onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))} 
+          onSearch={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))}
           onClear={() => setSearch('')} 
           placeholder="Search scholarships, jobs, grants..." 
         />

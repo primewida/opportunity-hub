@@ -99,6 +99,7 @@ export default function CourseRecommendations() {
       <SearchBar
         value={search}
         onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))}
+        onSearch={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))}
         onClear={() => setSearch('')}
         placeholder="Search courses..."
       />
