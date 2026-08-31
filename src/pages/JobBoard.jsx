@@ -125,40 +125,73 @@ export default function JobBoard() {
     }
   };
   
-  const filtered = useMemo(() => (data || []).filter(j => {
+  const getJobRelevance = (j, tokens) => {
+    let score = 0;
+    const title = (j.title || '').toLowerCase();
+    const company = (j.company || j.companyName || '').toLowerCase();
+    const tags = Array.isArray(j.tags) ? j.tags.map(t => String(t).toLowerCase()) : (typeof j.tags === 'string' ? [j.tags.toLowerCase()] : []);
+    const reqs = Array.isArray(j.requirements) ? j.requirements.map(r => String(r).toLowerCase()) : (typeof j.requirements === 'string' ? [j.requirements.toLowerCase()] : []);
+    const desc = (j.description || '').toLowerCase();
+    const loc = (j.location || '').toLowerCase();
+
+    for (const t of tokens) {
+      if (title.includes(t)) {
+        score += 10000;
+        if (new RegExp(`\\b${t}\\b`, 'i').test(title)) score += 5000;
+      }
+      if (tags.some(tag => tag.includes(t))) score += 4000;
+      if (company.includes(t)) score += 3000;
+      if (loc.includes(t)) score += 2000;
+      if (reqs.some(r => r.includes(t))) score += 1000;
+      if (desc.includes(t) && new RegExp(`\\b${t}\\b`, 'i').test(desc)) score += 300;
+    }
+    return score;
+  };
+
+  const filtered = useMemo(() => {
     const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
-    if (q) {
-      const tokens = q.split(/\s+/).filter(Boolean);
-      const reqText = Array.isArray(j.requirements) ? j.requirements.join(' ') : String(j.requirements || '');
-      const tagsText = Array.isArray(j.tags) ? j.tags.join(' ') : String(j.tags || '');
-      const combinedText = `
-        ${j.title || ''} 
-        ${j.company || ''} 
-        ${j.location || ''} 
-        ${j.type || ''} 
-        ${j.description || ''} 
-        ${j.responsibilities || ''} 
-        ${j.salary || ''} 
-        ${reqText} 
-        ${tagsText}
-      `.toLowerCase();
-      
-      const allTokensMatch = tokens.every(token => combinedText.includes(token));
-      if (!allTokensMatch) return false;
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+
+    let result = (data || []).map(j => {
+      const relScore = tokens.length > 0 ? getJobRelevance(j, tokens) : 0;
+      return { ...j, relScore };
+    });
+
+    if (tokens.length > 0) {
+      result = result.filter(j => j.relScore > 0);
     }
+
     if (typeFilter !== 'All') {
-      const jType = String(j.type || '').toLowerCase();
       const fType = String(typeFilter || '').toLowerCase();
-      if (!jType.includes(fType) && !fType.includes(jType)) return false;
+      result = result.filter(j => {
+        const jType = String(j.type || '').toLowerCase();
+        return jType.includes(fType) || fType.includes(jType);
+      });
     }
+
     if (scopeFilter !== 'All') {
-      if (scopeFilter.includes('In ') && j.proximityTier !== 1) return false;
-      if (scopeFilter.includes('Nigeria') && (j.proximityTier > 2)) return false;
-      if (scopeFilter.includes('Remote') && j.proximityTier !== 3) return false;
-      if (scopeFilter.includes('International') && j.proximityTier !== 4) return false;
+      result = result.filter(j => {
+        if (scopeFilter.includes('In ') && j.proximityTier !== 1) return false;
+        if (scopeFilter.includes('Nigeria') && j.proximityTier > 2) return false;
+        if (scopeFilter.includes('Remote') && j.proximityTier !== 3) return false;
+        if (scopeFilter.includes('International') && j.proximityTier !== 4) return false;
+        return true;
+      });
     }
-    return true;
-  }), [search, typeFilter, scopeFilter, data]);
+
+    // Sort: If search query is active, sort by Relevance Score DESC first!
+    result.sort((a, b) => {
+      if (tokens.length > 0 && b.relScore !== a.relScore) {
+        return b.relScore - a.relScore;
+      }
+      if (a.proximityTier !== b.proximityTier) {
+        return a.proximityTier - b.proximityTier;
+      }
+      return new Date(b.postedAt || b.createdAt || 0) - new Date(a.postedAt || a.createdAt || 0);
+    });
+
+    return result;
+  }, [search, typeFilter, scopeFilter, data]);
 
   const handleShareJob = (job) => {
     if (navigator.share) {

@@ -58,32 +58,41 @@ export default function BrowseOpportunities() {
 
   const chipOptions = ['All', ...OPPORTUNITY_TYPES];
 
+  const getOppRelevance = (o, tokens) => {
+    let score = 0;
+    const title = (o.title || '').toLowerCase();
+    const org = (o.organization || o.provider || '').toLowerCase();
+    const type = (o.type || o.opportunityType || '').toLowerCase();
+    const tags = Array.isArray(o.tags) ? o.tags.map(t => String(t).toLowerCase()) : [];
+    const edu = (o.educationLevel || '').toLowerCase();
+    const field = (o.fieldOfStudy || '').toLowerCase();
+    const desc = (o.description || '').toLowerCase();
+
+    for (const t of tokens) {
+      if (title.includes(t)) {
+        score += 10000;
+        if (new RegExp(`\\b${t}\\b`, 'i').test(title)) score += 5000;
+      }
+      if (tags.some(tag => tag.includes(t))) score += 4000;
+      if (org.includes(t)) score += 3000;
+      if (type.includes(t)) score += 2000;
+      if (field.includes(t) || edu.includes(t)) score += 1500;
+      if (desc.includes(t) && new RegExp(`\\b${t}\\b`, 'i').test(desc)) score += 300;
+    }
+    return score;
+  };
+
   const filtered = useMemo(() => {
-    let result = [...data];
     const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
-    if (q) {
-      const tokens = q.split(/\s+/).filter(Boolean);
-      result = result.filter(o => {
-        const reqText = Array.isArray(o.eligibilityCriteria) ? o.eligibilityCriteria.join(' ') : String(o.eligibilityCriteria || '');
-        const docsText = Array.isArray(o.requiredDocuments) ? o.requiredDocuments.join(' ') : String(o.requiredDocuments || '');
-        const benText = Array.isArray(o.benefits) ? o.benefits.join(' ') : String(o.benefits || '');
-        const tagsText = Array.isArray(o.tags) ? o.tags.join(' ') : String(o.tags || '');
-        const combinedText = `
-          ${o.title || ''} 
-          ${o.organization || ''} 
-          ${o.provider || ''} 
-          ${o.description || ''} 
-          ${o.location || ''} 
-          ${o.type || o.opportunityType || ''} 
-          ${o.educationLevel || ''} 
-          ${o.fieldOfStudy || ''} 
-          ${reqText} 
-          ${docsText} 
-          ${benText} 
-          ${tagsText}
-        `.toLowerCase();
-        return tokens.every(token => combinedText.includes(token));
-      });
+    const tokens = q ? q.split(/\s+/).filter(Boolean) : [];
+
+    let result = (data || []).map(o => {
+      const relScore = tokens.length > 0 ? getOppRelevance(o, tokens) : 0;
+      return { ...o, relScore };
+    });
+
+    if (tokens.length > 0) {
+      result = result.filter(o => o.relScore > 0);
     }
     if (typeFilter !== 'All') {
       result = result.filter(o => (o.type || o.opportunityType) === typeFilter);
@@ -104,9 +113,16 @@ export default function BrowseOpportunities() {
     if (filters.deadline === '7days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 7 && d >= 0; });
     if (filters.deadline === '30days') result = result.filter(o => { const d = (new Date(o.deadline) - new Date()) / 86400000; return d <= 30 && d >= 0; });
 
-    if (sortBy === 'match') result.sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
-    else if (sortBy === 'deadline') result.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
-    else if (sortBy === 'newest') result.sort((a, b) => new Date(b.postedAt || b.createdAt || b.deadline || 0) - new Date(a.postedAt || a.createdAt || a.deadline || 0));
+    if (tokens.length > 0) {
+      result.sort((a, b) => b.relScore - a.relScore);
+    } else if (sortBy === 'match') {
+      result.sort((a, b) => (b.matchPercentage || 0) - (a.matchPercentage || 0));
+    } else if (sortBy === 'deadline') {
+      result.sort((a, b) => new Date(a.deadline) - new Date(b.deadline));
+    } else if (sortBy === 'newest') {
+      result.sort((a, b) => new Date(b.postedAt || b.createdAt || b.deadline || 0) - new Date(a.postedAt || a.createdAt || a.deadline || 0));
+    }
+
     return result;
   }, [search, typeFilter, sortBy, filters, data]);
 
