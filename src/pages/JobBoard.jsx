@@ -1,22 +1,44 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { jobs, opportunities } from '../services/api';
+import { useApp } from '../context/AppContext';
 import { SearchBar, FilterChips, Card, Badge, Button, Modal } from '../components/ui';
-import { MapPin, Briefcase, Calendar, DollarSign, ExternalLink, RefreshCw, CheckCircle2, FileText, ChevronRight, Share2 } from 'lucide-react';
+import { MapPin, Briefcase, Calendar, DollarSign, ExternalLink, RefreshCw, CheckCircle2, FileText, ChevronRight, Share2, Compass } from 'lucide-react';
 import { formatDate } from '../utils/helpers';
 import './JobBoard.css';
 
 export default function JobBoard() {
   const navigate = useNavigate();
+  const app = useApp();
+  const userState = app.user?.currentState || app.user?.stateOfOrigin || app.user?.state || '';
+  
   const [search, setSearch] = useState('');
+  const [scopeFilter, setScopeFilter] = useState('All');
   const [typeFilter, setTypeFilter] = useState('All');
-  const types = ['All', 'Full-time', 'Part-time', 'Internship', 'NYSC'];
+
+  const types = ['All', 'Full-time', 'Part-time', 'Internship', 'NYSC', 'Volunteer'];
+  const scopes = [
+    'All',
+    ...(userState ? [`📍 In ${userState}`] : []),
+    '🇳🇬 Nigeria',
+    '🌐 Remote',
+    '🌍 International'
+  ];
   
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scraping, setScraping] = useState(false);
   const [error, setError] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
+
+  const getProximityTier = (jobLoc = '', userSt = '') => {
+    const l = (jobLoc || '').toLowerCase();
+    const s = (userSt || '').toLowerCase().trim();
+    if (s && s.length > 2 && l.includes(s)) return 1; // State match
+    if (l.includes('nigeria') || l.includes('lagos') || l.includes('abuja') || l.includes('port harcourt') || l.includes('ibadan') || l.includes('kano') || l.includes('enugu') || l.includes('nationwide')) return 2; // Nigeria
+    if (l.includes('remote')) return 3; // Remote
+    return 4; // International
+  };
 
   const fetchJobs = () => {
     setLoading(true);
@@ -41,7 +63,6 @@ export default function JobBoard() {
           }
         }
 
-        // Ensure default requirements if empty
         if (requirements.length === 0) {
           if (tags.length > 0) requirements = tags.map(t => `Demonstrated competence in ${t}`);
           else requirements = [
@@ -50,6 +71,8 @@ export default function JobBoard() {
             'Ability to meet delivery milestones and adhere to organizational quality standards.'
           ];
         }
+
+        const tier = getProximityTier(j.location, userState);
 
         return {
           ...j,
@@ -64,9 +87,19 @@ export default function JobBoard() {
           responsibilities: j.responsibilities || 'Execute assigned organizational and technical duties, collaborate with team leads, and meet scheduled project deliverables.',
           requirements,
           applyUrl: j.applyUrl || j.applicationLink || '#',
-          tags: Array.isArray(tags) && tags.length > 0 ? tags : requirements.slice(0, 3)
+          tags: Array.isArray(tags) && tags.length > 0 ? tags : requirements.slice(0, 3),
+          proximityTier: tier
         };
       });
+
+      // Strict Proximity Sort: 1 (State) -> 2 (Nigeria) -> 3 (Remote) -> 4 (International)
+      normalized.sort((a, b) => {
+        if (a.proximityTier !== b.proximityTier) {
+          return a.proximityTier - b.proximityTier;
+        }
+        return new Date(b.postedAt || b.createdAt || 0) - new Date(a.postedAt || a.createdAt || 0);
+      });
+
       setData(normalized);
       setLoading(false);
     }).catch(err => {
@@ -77,7 +110,7 @@ export default function JobBoard() {
 
   useEffect(() => {
     fetchJobs();
-  }, []);
+  }, [userState]);
 
   const handleSyncJobs = async () => {
     setScraping(true);
@@ -106,8 +139,14 @@ export default function JobBoard() {
       const fType = typeFilter.toLowerCase();
       if (!jType.includes(fType) && !fType.includes(jType)) return false;
     }
+    if (scopeFilter !== 'All') {
+      if (scopeFilter.includes('In ') && j.proximityTier !== 1) return false;
+      if (scopeFilter.includes('Nigeria') && (j.proximityTier > 2)) return false;
+      if (scopeFilter.includes('Remote') && j.proximityTier !== 3) return false;
+      if (scopeFilter.includes('International') && j.proximityTier !== 4) return false;
+    }
     return true;
-  }), [search, typeFilter, data]);
+  }), [search, typeFilter, scopeFilter, data]);
 
   const handleShareJob = (job) => {
     if (navigator.share) {
@@ -146,11 +185,19 @@ export default function JobBoard() {
         </button>
       </div>
 
-      <FilterChips options={types} selected={typeFilter} onChange={setTypeFilter} />
+      <div style={{ marginBottom: 'var(--space-sm)' }}>
+        <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', margin: '0 0 6px' }}>Location Proximity:</p>
+        <FilterChips options={scopes} selected={scopeFilter} onChange={setScopeFilter} />
+      </div>
+
+      <div style={{ marginBottom: 'var(--space-md)' }}>
+        <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase', margin: '0 0 6px' }}>Job Type:</p>
+        <FilterChips options={types} selected={typeFilter} onChange={setTypeFilter} />
+      </div>
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: 'var(--space-sm) 0 var(--space-md)' }}>
-        <p className="jobs__count" style={{ margin: 0 }}>{filtered.length} live jobs available</p>
-        {scraping && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>🔄 Syncing live web jobs...</span>}
+        <p className="jobs__count" style={{ margin: 0 }}>{filtered.length} live jobs (ordered by proximity)</p>
+        {scraping && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>🔄 Syncing live Nigerian & remote jobs...</span>}
       </div>
 
       <div className="jobs__list">
@@ -167,7 +214,21 @@ export default function JobBoard() {
                   {job.company?.charAt(0).toUpperCase() || 'J'}
                 </div>
                 <div className="jobs__card-info" style={{ flex: 1, minWidth: 0 }}>
-                  <h3 className="jobs__card-title" style={{ margin: '0 0 4px', fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                    <h3 className="jobs__card-title" style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
+                    {job.proximityTier === 1 && (
+                      <span className="badge badge-success" style={{ fontSize: '10px', padding: '2px 8px' }}>📍 In {userState}</span>
+                    )}
+                    {job.proximityTier === 2 && (
+                      <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 8px' }}>🇳🇬 Nigeria</span>
+                    )}
+                    {job.proximityTier === 3 && (
+                      <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌐 Remote</span>
+                    )}
+                    {job.proximityTier === 4 && (
+                      <span className="badge badge-secondary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌍 Global</span>
+                    )}
+                  </div>
                   <p className="jobs__card-company" style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: 'var(--text-subhead)' }}>{job.company}</p>
                   <div className="jobs__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', fontSize: 'var(--text-caption)', color: 'var(--text-tertiary)' }}>
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {job.location}</span>

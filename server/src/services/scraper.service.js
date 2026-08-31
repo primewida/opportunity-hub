@@ -746,19 +746,311 @@ export async function scrapeLiveOpportunities() {
   return results;
 }
 
+const NIGERIA_STATE_MAP = {
+  'Lagos': ['lagos', 'ikeja', 'victoria island', 'lekki', 'yaba', 'surulere', 'oshodi', 'apapa', 'maryland', 'ogba', 'ikoyi', 'ajah', 'epe', 'ikorodu'],
+  'Abuja (FCT)': ['abuja', 'fct', 'federal capital territory', 'garki', 'wuse', 'maitama', 'gwarinpa', 'asokoro', 'kubwa', 'lugbe', 'central business district'],
+  'Rivers': ['rivers', 'port harcourt', 'phc', 'obio-akpor', 'bonny'],
+  'Oyo': ['oyo', 'ibadan', 'ogbomosho', 'oyo town'],
+  'Kano': ['kano', 'kano city'],
+  'Kaduna': ['kaduna', 'zaria', 'kafachan'],
+  'Enugu': ['enugu', 'nsukka'],
+  'Ogun': ['ogun', 'abeokuta', 'ota', 'sagamu', 'ijebu', 'ijebu-ode'],
+  'Delta': ['delta', 'warri', 'asaba', 'ughelli', 'sapele'],
+  'Edo': ['edo', 'benin', 'benin city', 'ekpoma'],
+  'Anambra': ['anambra', 'awka', 'onitsha', 'nnewi'],
+  'Akwa Ibom': ['akwa ibom', 'uyo', 'eket', 'ikot ekpene'],
+  'Cross River': ['cross river', 'calabar'],
+  'Plateau': ['plateau', 'jos'],
+  'Kwara': ['kwara', 'ilorin', 'offa'],
+  'Osun': ['osun', 'osogbo', 'ile-ife', 'ife', 'ilesa'],
+  'Ondo': ['ondo', 'akure', 'ondo town'],
+  'Imo': ['imo', 'owerri', 'orlu'],
+  'Abia': ['abia', 'umuahia', 'aba'],
+  'Bayelsa': ['bayelsa', 'yenagoa'],
+  'Benue': ['benue', 'makurdi', 'gboko'],
+  'Borno': ['borno', 'maiduguri'],
+  'Adamawa': ['adamawa', 'yola', 'mubi'],
+  'Bauchi': ['bauchi', 'azare'],
+  'Ebonyi': ['ebonyi', 'abakaliki'],
+  'Ekiti': ['ekiti', 'ado-ekiti', 'ikere'],
+  'Gombe': ['gombe'],
+  'Jigawa': ['jigawa', 'dutse'],
+  'Katsina': ['katsina', 'daura'],
+  'Kebbi': ['kebbi', 'birnin kebbi'],
+  'Kogi': ['kogi', 'lokoja', 'okene'],
+  'Nasarawa': ['nasarawa', 'lafia', 'karu'],
+  'Niger': ['niger', 'minna', 'suleja', 'bida'],
+  'Sokoto': ['sokoto'],
+  'Taraba': ['taraba', 'jalingo'],
+  'Yobe': ['yobe', 'damaturu'],
+  'Zamfara': ['zamfara', 'gusau']
+};
+
+export function extractNigerianJobLocation(title = '', text = '', defaultLoc = 'Nigeria') {
+  const combined = `${title} ${text}`.toLowerCase();
+  
+  for (const [state, cities] of Object.entries(NIGERIA_STATE_MAP)) {
+    for (const city of cities) {
+      const regex = new RegExp(`\\b${city}\\b`, 'i');
+      if (regex.test(combined)) {
+        if (combined.includes('remote')) {
+          return `${state} & Remote (Nigeria)`;
+        }
+        return `${state}, Nigeria`;
+      }
+    }
+  }
+
+  if (combined.includes('remote')) return 'Remote (Nigeria)';
+  if (combined.includes('nationwide') || combined.includes('across nigeria')) return 'Nationwide, Nigeria';
+  if (combined.includes('nigeria')) return 'Nigeria';
+
+  return defaultLoc;
+}
+
 /**
- * Scrapes live jobs: Arbeitnow Global API, Jobicy API, My NGO Jobs, Hot Nigerian Jobs, & Direct Fintech ATS
+ * Scrapes fresh Nigerian jobs from MyJobMag HTML Portal
+ */
+export async function scrapeMyJobMagJobs() {
+  const results = [];
+  try {
+    const res = await fetch('https://www.myjobmag.com/jobs', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (res.ok) {
+      const html = await res.text();
+      const itemMatches = [...html.matchAll(/<li class="job-list-li"[\s\S]*?<\/li>/gi)].map(m => m[0]);
+
+      for (const itemHtml of itemMatches.slice(0, 45)) {
+        const titleMatch = itemHtml.match(/<h2>\s*<a[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>\s*<\/h2>/is);
+        if (!titleMatch) continue;
+
+        const rawHref = titleMatch[1];
+        const fullLink = rawHref.startsWith('http') ? rawHref : `https://www.myjobmag.com${rawHref}`;
+        const rawTitle = cleanHtml(titleMatch[2]);
+        if (!rawTitle || rawTitle.length < 4) continue;
+
+        const descMatch = itemHtml.match(/<li class="job-desc">(.*?)<\/li>/is);
+        const desc = cleanHtml(descMatch ? descMatch[1] : 'Exciting career opening with a top Nigerian employer.');
+
+        let company = 'Nigerian Employer';
+        let cleanJobTitle = rawTitle;
+        if (rawTitle.includes(' at ')) {
+          const parts = rawTitle.split(' at ');
+          cleanJobTitle = parts[0].trim();
+          company = parts.slice(1).join(' at ').trim();
+        } else if (rawTitle.includes(' – ')) {
+          const parts = rawTitle.split(' – ');
+          cleanJobTitle = parts[1]?.trim() || parts[0].trim();
+          company = parts[0].trim();
+        }
+
+        const location = extractNigerianJobLocation(rawTitle, `${desc} ${itemHtml}`, 'Nigeria');
+        const titleLower = rawTitle.toLowerCase();
+        let jobType = 'Full-time';
+        if (titleLower.includes('intern') || titleLower.includes('internship')) jobType = 'Internship';
+        else if (titleLower.includes('nysc')) jobType = 'NYSC';
+        else if (titleLower.includes('part-time') || titleLower.includes('volunteer')) jobType = 'Part-time';
+        else if (titleLower.includes('contract')) jobType = 'Contract';
+
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 30 + Math.floor(Math.random() * 30));
+
+        const existingJob = await prisma.job.findFirst({
+          where: {
+            OR: [
+              { applyUrl: fullLink },
+              { title: cleanJobTitle, companyName: company.slice(0, 60) }
+            ]
+          }
+        });
+
+        const jobData = {
+          title: cleanJobTitle,
+          description: desc.slice(0, 600) + (desc.length > 600 ? '...' : ''),
+          companyName: company.slice(0, 60),
+          location,
+          jobType,
+          salaryRange: 'Competitive',
+          applicationDeadline: deadline,
+          requirements: JSON.stringify([
+            'Relevant degree or HND/OND qualification in related field',
+            'Strong communication, problem-solving, and interpersonal skills',
+            'Demonstrated ability to meet performance goals and work in team environment'
+          ]),
+          responsibilities: 'Execute operational duties, collaborate across squads, and deliver project objectives on time.',
+          applyUrl: fullLink,
+          tags: JSON.stringify([jobType, location.split(',')[0], 'Nigeria', 'MyJobMag']),
+        };
+
+        if (existingJob) {
+          await prisma.job.update({
+            where: { id: existingJob.id },
+            data: jobData
+          });
+          results.push({ id: existingJob.id, title: cleanJobTitle, type: 'job', status: 'updated' });
+        } else {
+          const created = await prisma.job.create({ data: jobData });
+          results.push({ id: created.id, title: cleanJobTitle, type: 'job', status: 'created' });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('  ⚠️ MyJobMag scraper notice:', err.message);
+  }
+  return results;
+}
+
+/**
+ * Scrapes NGO & Non-Profit vacancies from MyNGOJobs RSS
+ */
+export async function scrapeMyNGOJobs() {
+  const results = [];
+  try {
+    const res = await fetch('https://myngojobs.com/feed/', {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': 'application/rss+xml,application/xml,text/xml,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9'
+      },
+      signal: AbortSignal.timeout(12000)
+    });
+
+    if (res.ok) {
+      const xmlText = await res.text();
+      const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+      for (const itemXml of itemMatches.slice(0, 45)) {
+        const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
+        const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
+        const descMatch = itemXml.match(/<description>(.*?)<\/description>/is);
+        const contentMatch = itemXml.match(/<content:encoded>(.*?)<\/content:encoded>/is);
+
+        const rawTitle = titleMatch ? titleMatch[1] : '';
+        const rawLink = linkMatch ? linkMatch[1] : '';
+        const rawDesc = descMatch ? descMatch[1] : '';
+        const rawContent = contentMatch ? contentMatch[1] : '';
+
+        const title = cleanHtml(rawTitle);
+        const link = cleanHtml(rawLink);
+        const desc = cleanHtml(rawDesc || rawContent);
+
+        if (!title || !link || title.length < 5) continue;
+
+        let directApplyUrl = link;
+        const mailtoMatch = (rawContent || itemXml).match(/mailto:([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        if (mailtoMatch && mailtoMatch[1]) {
+          directApplyUrl = `mailto:${mailtoMatch[1]}`;
+        } else {
+          const urlMatch = rawContent.match(/href=["'](https?:\/\/[^"']+)["']/i);
+          if (urlMatch && !urlMatch[1].includes('myngojobs.com') && !urlMatch[1].includes('facebook') && !urlMatch[1].includes('twitter')) {
+            directApplyUrl = urlMatch[1];
+          }
+        }
+
+        let company = 'NGO / Non-Profit Org';
+        let cleanJobTitle = title;
+        if (title.includes(' at ')) {
+          const parts = title.split(' at ');
+          cleanJobTitle = parts[0].trim();
+          company = parts.slice(1).join(' at ').trim();
+        }
+
+        const location = extractNigerianJobLocation(title, `${rawContent} ${desc}`, 'Nigeria (Remote)');
+        const titleLower = title.toLowerCase();
+        let jobType = 'Full-time';
+        if (titleLower.includes('intern') || titleLower.includes('internship')) jobType = 'Internship';
+        else if (titleLower.includes('nysc')) jobType = 'NYSC';
+        else if (titleLower.includes('volunteer')) jobType = 'Volunteer';
+        else if (titleLower.includes('part-time')) jobType = 'Part-time';
+
+        let deadline = extractDeadline(rawContent);
+        if (!deadline || new Date(deadline) < new Date()) {
+          deadline = new Date();
+          deadline.setDate(deadline.getDate() + 35 + Math.floor(Math.random() * 20));
+        }
+
+        let reqList = [];
+        const liMatches = [...(rawContent || '').matchAll(/<li[^>]*>(.*?)<\/li>/gis)].map(m => cleanHtml(m[1])).filter(t => t.length > 15);
+        if (liMatches.length > 0) {
+          reqList = liMatches.slice(0, 5);
+        } else {
+          reqList = [
+            'Bachelor’s Degree or relevant qualification in development / related field',
+            'Prior experience in humanitarian, community development, or non-profit sector',
+            'Excellent written communication, report writing, and stakeholder engagement skills'
+          ];
+        }
+
+        const existingJob = await prisma.job.findFirst({
+          where: {
+            OR: [
+              { applyUrl: link },
+              { applyUrl: directApplyUrl },
+              { title: cleanJobTitle, companyName: company.slice(0, 60) }
+            ]
+          }
+        });
+
+        const jobData = {
+          title: cleanJobTitle,
+          description: desc.slice(0, 650) + (desc.length > 650 ? '...' : ''),
+          companyName: company.slice(0, 60),
+          location,
+          jobType,
+          salaryRange: 'Competitive NGO Scale',
+          applicationDeadline: deadline,
+          requirements: JSON.stringify(reqList),
+          responsibilities: 'Support program implementation, coordinate humanitarian initiatives, and prepare donor documentation.',
+          applyUrl: directApplyUrl || link,
+          tags: JSON.stringify([jobType, 'NGO & Non-Profit', location.split(',')[0], 'Nigeria', 'MyNGOJobs']),
+        };
+
+        if (existingJob) {
+          await prisma.job.update({
+            where: { id: existingJob.id },
+            data: jobData
+          });
+          results.push({ id: existingJob.id, title: cleanJobTitle, type: 'job', status: 'updated' });
+        } else {
+          const created = await prisma.job.create({ data: jobData });
+          results.push({ id: created.id, title: cleanJobTitle, type: 'job', status: 'created' });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('  ⚠️ MyNGOJobs scraper notice:', err.message);
+  }
+  return results;
+}
+
+/**
+ * Scrapes live jobs: MyJobMag, My NGO Jobs, Hot Nigerian Jobs, Jobicy, Arbeitnow & Direct ATS
  */
 export async function scrapeLiveJobs() {
   const results = [];
-  console.log('💼 Scraping live jobs from Arbeitnow, Jobicy, NGO portals, and Nigerian ATS...');
+  console.log('💼 Scraping live jobs from MyJobMag, My NGO Jobs, Hot Nigerian Jobs, and Direct ATS...');
 
-  // 1. Scrape RSS Job Feeds (My NGO Jobs, NGO Jobs in Africa, Hot Nigerian Jobs)
+  // 1. Scrape MyJobMag HTML Directory (Nigeria Primary)
+  const myJobMagResults = await scrapeMyJobMagJobs();
+  results.push(...myJobMagResults);
+
+  // 2. Scrape My NGO Jobs (Nigeria NGO Primary)
+  const myNgoResults = await scrapeMyNGOJobs();
+  results.push(...myNgoResults);
+
+  // 3. Scrape Other RSS Job Feeds (NGO Jobs in Africa, Hot Nigerian Jobs)
   for (const feed of JOB_FEEDS) {
     try {
       const response = await fetch(feed.url, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
           'Accept': 'application/rss+xml, application/xml, text/xml, */*'
         },
         signal: AbortSignal.timeout(12000)
@@ -784,18 +1076,23 @@ export async function scrapeLiveJobs() {
 
         if (!title || !link || title.length < 5) continue;
 
-        // Resolve direct application link or mailto
         const directApplyUrl = await resolveDirectApplicationLink(link, rawDesc);
 
         let company = feed.defaultCompany;
+        let cleanJobTitle = title;
         if (title.includes(' at ')) {
-          company = title.split(' at ')[1].trim();
+          const parts = title.split(' at ');
+          cleanJobTitle = parts[0].trim();
+          company = parts.slice(1).join(' at ').trim();
         } else if (title.includes(' – ')) {
-          company = title.split(' – ')[0].trim();
+          const parts = title.split(' – ');
+          cleanJobTitle = parts[1]?.trim() || parts[0].trim();
+          company = parts[0].trim();
         } else if (title.includes(' Job Recruitment')) {
           company = title.replace(/Job Recruitment.*/i, '').trim();
         }
 
+        const location = extractNigerianJobLocation(title, `${desc} ${itemXml}`, feed.name.includes('Hot Nigerian') ? 'Nigeria' : 'Nigeria & Remote');
         const titleLower = title.toLowerCase();
         let jobType = 'Full-time';
         if (titleLower.includes('intern') || titleLower.includes('internship')) jobType = 'Internship';
@@ -809,23 +1106,23 @@ export async function scrapeLiveJobs() {
           where: {
             OR: [
               { applyUrl: link },
-              { title: title }
+              { title: cleanJobTitle, companyName: company.slice(0, 60) }
             ]
           }
         });
 
         const jobData = {
-          title,
+          title: cleanJobTitle,
           description: desc.slice(0, 600) + (desc.length > 600 ? '...' : ''),
           companyName: company.slice(0, 60),
-          location: feed.name.includes('Hot Nigerian') ? 'Nigeria' : 'Nigeria & Remote',
+          location,
           jobType,
           salaryRange: feed.name.includes('NGO') ? 'Competitive NGO Scale' : 'Competitive',
           applicationDeadline: deadline,
           requirements: JSON.stringify(['Relevant degree or professional qualification', 'Strong interpersonal and problem-solving skills', 'Team collaboration']),
           responsibilities: 'Execute day-to-day organizational responsibilities, report to squad leads, and meet project milestones.',
           applyUrl: directApplyUrl || link,
-          tags: JSON.stringify([jobType, feed.name.includes('NGO') ? 'NGO & Non-Profit' : 'Corporate', 'Nigeria']),
+          tags: JSON.stringify([jobType, feed.name.includes('NGO') ? 'NGO & Non-Profit' : 'Corporate', location.split(',')[0], 'Nigeria']),
         };
 
         if (existingJob) {
@@ -833,10 +1130,10 @@ export async function scrapeLiveJobs() {
             where: { id: existingJob.id },
             data: jobData
           });
-          results.push({ id: existingJob.id, title, type: 'job', status: 'updated' });
+          results.push({ id: existingJob.id, title: cleanJobTitle, type: 'job', status: 'updated' });
         } else {
           const created = await prisma.job.create({ data: jobData });
-          results.push({ id: created.id, title, type: 'job', status: 'created' });
+          results.push({ id: created.id, title: cleanJobTitle, type: 'job', status: 'created' });
         }
       }
     } catch (feedErr) {
