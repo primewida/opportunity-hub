@@ -66,9 +66,9 @@ export default function LearningRoadmaps() {
         </p>
         <SearchBar
           value={search}
-          onChange={setSearch}
+          onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))}
           onClear={() => setSearch('')}
-          placeholder="Search roadmaps..."
+          placeholder="Search roadmaps, skills..."
         />
         <FilterChips options={CATEGORIES} selected={category} onChange={setCategory} />
       </div>

@@ -122,7 +122,12 @@ export default function BrowseOpportunities() {
   return (
     <div className="browse">
       <div className="browse__header">
-        <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search scholarships, jobs, grants..." />
+        <SearchBar 
+          value={search} 
+          onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))} 
+          onClear={() => setSearch('')} 
+          placeholder="Search scholarships, jobs, grants..." 
+        />
         <div className="browse__controls">
           <FilterChips options={chipOptions} selected={typeFilter} onChange={setTypeFilter} />
           <div className="browse__control-right">

@@ -42,7 +42,12 @@ export default function MentorDirectory() {
         <h1 className="mentors__title">🧑‍🏫 Mentor Directory</h1>
         <p className="mentors__subtitle">Connect with scholarship alumni and industry professionals</p>
       </div>
-      <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search mentors by name or expertise..." />
+      <SearchBar 
+        value={search} 
+        onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))} 
+        onClear={() => setSearch('')} 
+        placeholder="Search mentors by name or expertise..." 
+      />
       <FilterChips options={fields} selected={field} onChange={setField} />
       {loading ? <p style={{ padding: '2rem', textAlign: 'center' }}>Loading mentors...</p> : (
       <div className="mentors__grid">

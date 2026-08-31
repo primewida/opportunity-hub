@@ -10,17 +10,22 @@ export default function SearchBar({
   className = '',
   ...props
 }) {
-  const displayValue = typeof value === 'string' ? value : (value?.target?.value ?? String(value ?? ''));
+  // Guarantee a primitive string for the input
+  const strValue = typeof value === 'string'
+    ? value
+    : (value && value.target && value.target.value !== undefined ? String(value.target.value) : (value ? String(value) : ''));
 
   const handleChange = (e) => {
-    const val = e?.target ? e.target.value : String(e ?? '');
+    const nextVal = e && e.target !== undefined ? e.target.value : (typeof e === 'string' ? e : '');
     if (typeof onChange === 'function') {
-      onChange(val);
+      onChange(nextVal);
     }
   };
 
   const handleClear = () => {
-    onClear?.();
+    if (typeof onClear === 'function') {
+      onClear();
+    }
     if (typeof onChange === 'function') {
       onChange('');
     }
@@ -41,14 +46,15 @@ export default function SearchBar({
       <input
         type="text"
         className="input"
-        value={displayValue}
+        value={strValue}
         onChange={handleChange}
+        onInput={handleChange}
         onFocus={onFocus}
         placeholder={placeholder}
-        style={{ paddingLeft: '40px', paddingRight: displayValue ? '40px' : '12px', width: '100%' }}
+        style={{ paddingLeft: '40px', paddingRight: strValue ? '40px' : '12px', width: '100%' }}
         {...props}
       />
-      {displayValue && (
+      {strValue ? (
         <button
           type="button"
           onClick={handleClear}
@@ -69,7 +75,7 @@ export default function SearchBar({
         >
           <X size={16} />
         </button>
-      )}
+      ) : null}
     </div>
   );
 }

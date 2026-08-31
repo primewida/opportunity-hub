@@ -185,7 +185,12 @@ export default function JobBoard() {
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <div style={{ flex: 1 }}>
-          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search jobs, tech stacks, skills, companies, cities..." />
+          <SearchBar 
+            value={search} 
+            onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))} 
+            onClear={() => setSearch('')} 
+            placeholder="Search jobs, tech stacks, skills, companies, cities..." 
+          />
         </div>
         <button 
           className={`btn btn-icon btn-ghost ${scraping ? 'animate-spin' : ''}`}

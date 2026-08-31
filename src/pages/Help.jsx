@@ -46,7 +46,12 @@ export default function Help() {
         <p className="help__subtitle">Search our FAQ or contact our support team</p>
       </div>
 
-      <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search for answers..." />
+      <SearchBar 
+        value={search} 
+        onChange={(val) => setSearch(typeof val === 'string' ? val : (val?.target?.value ?? ''))} 
+        onClear={() => setSearch('')} 
+        placeholder="Search for answers..." 
+      />
 
       {filtered ? (
         <div className="help__results">
