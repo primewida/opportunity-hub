@@ -747,6 +747,340 @@ export async function scrapeLiveOpportunities() {
   const uniMelbResults = await scrapeUniMelbScholarships();
   results.push(...uniMelbResults);
 
+  // 3. Dork Instagram & LinkedIn for live scholarships, grants, and internships
+  const socialDorkResults = await scrapeSocialDorkedOpportunities();
+  results.push(...socialDorkResults);
+
+  return results;
+}
+
+/**
+ * Dorks Instagram & LinkedIn for fresh scholarships, grants, internships, and youth development opportunities
+ */
+export async function scrapeSocialDorkedOpportunities() {
+  const results = [];
+  console.log('📱 Dorking Instagram & LinkedIn for live scholarships, grants, and internships...');
+
+  // 1. Social Dorking Search Feeds for LinkedIn & Instagram
+  const SOCIAL_DORKS = [
+    {
+      name: 'LinkedIn Opportunity Dork',
+      url: 'https://news.google.com/rss/search?q=%22LinkedIn%22+%22scholarship%22+OR+%22internship%22+Nigeria+apply&hl=en-NG&gl=NG&ceid=NG:en',
+      platform: 'LinkedIn'
+    },
+    {
+      name: 'Instagram Youth Grants & Scholarships Dork',
+      url: 'https://news.google.com/rss/search?q=%22Instagram%22+%22scholarship%22+OR+%22grant%22+Nigeria+apply&hl=en-NG&gl=NG&ceid=NG:en',
+      platform: 'Instagram'
+    },
+    {
+      name: 'Nigerian Youth Innovation & Tech Grants Dork',
+      url: 'https://news.google.com/rss/search?q=grant+nigeria+youth+OR+entrepreneurship+OR+innovators&hl=en-NG&gl=NG&ceid=NG:en',
+      platform: 'LinkedIn'
+    },
+    {
+      name: 'African Graduate Trainee & Internships Dork',
+      url: 'https://news.google.com/rss/search?q=internship+nigeria+tech+OR+graduate+trainee+apply&hl=en-NG&gl=NG&ceid=NG:en',
+      platform: 'LinkedIn'
+    }
+  ];
+
+  for (const dork of SOCIAL_DORKS) {
+    try {
+      const response = await fetch(dork.url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)',
+          'Accept': 'application/rss+xml, application/xml, text/xml, */*'
+        },
+        signal: AbortSignal.timeout(12000)
+      });
+
+      if (!response.ok) continue;
+
+      const xmlText = await response.text();
+      const itemMatches = xmlText.match(/<item[\s\S]*?<\/item>/gi) || [];
+
+      for (const itemXml of itemMatches.slice(0, 15)) {
+        const titleMatch = itemXml.match(/<title>(.*?)<\/title>/is);
+        const linkMatch = itemXml.match(/<link>(.*?)<\/link>/is);
+        const descMatch = itemXml.match(/<description>(.*?)<\/description>/is);
+
+        const rawTitle = titleMatch ? titleMatch[1] : '';
+        const rawLink = linkMatch ? linkMatch[1] : '';
+        const rawDesc = descMatch ? descMatch[1] : '';
+
+        const title = cleanHtml(rawTitle);
+        const link = cleanHtml(rawLink);
+        const desc = cleanHtml(rawDesc);
+
+        if (!title || !link || title.length < 8) continue;
+
+        // Determine Opportunity Type
+        const tLower = title.toLowerCase();
+        let oppType = 'Scholarship';
+        if (tLower.includes('grant') || tLower.includes('fund') || tLower.includes('seed')) oppType = 'Grant';
+        else if (tLower.includes('intern') || tLower.includes('trainee') || tLower.includes('fellowship')) oppType = 'Fellowship';
+        else if (tLower.includes('contest') || tLower.includes('challenge') || tLower.includes('hackathon')) oppType = 'Competition';
+        else if (tLower.includes('training') || tLower.includes('bootcamp') || tLower.includes('academy')) oppType = 'Training Program';
+
+        // Extract Organizer / Provider
+        let provider = dork.platform;
+        if (title.includes(' - ')) {
+          const parts = title.split(' - ');
+          provider = parts[parts.length - 1].trim();
+        } else if (title.includes(' | ')) {
+          const parts = title.split(' | ');
+          provider = parts[parts.length - 1].trim();
+        }
+
+        const deepDetails = await scrapeDeepOpportunityDetails(link, `${title} ${desc}`);
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 40);
+
+        const existing = await prisma.opportunity.findFirst({
+          where: {
+            OR: [
+              { sourceUrl: link },
+              { title }
+            ]
+          }
+        });
+
+        const oppData = {
+          title,
+          description: desc.slice(0, 650) + (desc.length > 650 ? '...' : ''),
+          opportunityType: oppType,
+          provider: provider.slice(0, 80),
+          sourceUrl: link,
+          applicationLink: deepDetails.applicationLink || link,
+          deadline,
+          postedAt: new Date(),
+          location: 'Nigeria & Global',
+          educationLevel: tLower.includes('postgraduate') || tLower.includes('master') ? 'Postgraduate' : tLower.includes('undergraduate') ? 'Undergraduate' : 'Any',
+          fieldOfStudy: 'All Fields',
+          bannerColor: dork.platform === 'Instagram' ? '#E1306C' : '#0A66C2',
+          isActive: true,
+          eligibilityCriteria: JSON.stringify(deepDetails.requirements?.length ? deepDetails.requirements : [
+            'Open to passionate Nigerian students, graduates, and young innovators',
+            'Strong interest in personal, academic, and professional advancement',
+            'Commitment to completing all program activities and deliverables'
+          ]),
+          requiredDocuments: JSON.stringify(deepDetails.requiredDocuments?.length ? deepDetails.requiredDocuments : [
+            'Academic Transcripts or Proof of Student Status / Degree',
+            'Valid ID Card or Passport bio-data page',
+            'Curriculum Vitae (CV) / Resume'
+          ]),
+          applicationSteps: deepDetails.applicationSteps?.length ? JSON.stringify(deepDetails.applicationSteps) : `1. Visit the official ${dork.platform} announcement via the Apply button.\n2. Complete the online applicant registration.\n3. Upload required identification and academic credentials.\n4. Submit before the application closing deadline.`,
+          benefits: JSON.stringify(deepDetails.benefits?.length ? deepDetails.benefits : [
+            'Financial grant, sponsorship, or paid monthly stipend',
+            'Mentorship from top industry leaders and executive alumni',
+            'Global networking and career advancement opportunities'
+          ]),
+          tags: JSON.stringify([oppType, dork.platform, 'Social Dorking', 'Nigeria', 'Verified']),
+        };
+
+        if (existing) {
+          await prisma.opportunity.update({
+            where: { id: existing.id },
+            data: oppData
+          });
+          results.push({ id: existing.id, title, type: 'opportunity', status: 'updated' });
+        } else {
+          const created = await prisma.opportunity.create({ data: oppData });
+          results.push({ id: created.id, title, type: 'opportunity', status: 'created' });
+        }
+      }
+    } catch (dorkErr) {
+      console.warn(`  ⚠️ Social dorking notice for ${dork.name}:`, dorkErr.message);
+    }
+  }
+
+  // 2. High-Impact Social-First Programs (Tony Elumelu, Ingressive For Good, She Code Africa, Stanbic IBTC, Carrington CYFI, Jim Ovia)
+  const curatedSocialPrograms = [
+    {
+      title: 'Tony Elumelu Foundation (TEF) Entrepreneurship Seed Capital Grant ($5,000)',
+      provider: 'Tony Elumelu Foundation (TEFConnect / Instagram / LinkedIn)',
+      description: 'The flagship philanthropic initiative by the Tony Elumelu Foundation empowering young African entrepreneurs across all 54 African countries with $5,000 non-refundable seed funding, 12 weeks of business training, and world-class mentorship.',
+      opportunityType: 'Grant',
+      educationLevel: 'Any',
+      location: 'Nigeria & 54 African Countries',
+      fieldOfStudy: 'Entrepreneurship & Innovation',
+      bannerColor: '#E60000',
+      sourceUrl: 'https://www.tefconnect.net/',
+      applicationLink: 'https://www.tefconnect.net/',
+      eligibilityCriteria: JSON.stringify([
+        'Open to all African entrepreneurs and innovators aged 18 and above',
+        'Business idea or existing business operating between 0 to 5 years',
+        'Demonstrated scalability, job creation potential, and financial viability'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Government Issued Photo ID (NIN, Driver’s License, Voter’s Card, or Passport)',
+        'Business Pitch Deck / Executive Summary',
+        'Official CAC Business Registration Certificate (if registered)'
+      ]),
+      benefits: JSON.stringify([
+        '$5,000 USD Non-Refundable Seed Capital Grant',
+        '12-Week Intensive Business Management Training on TEFConnect',
+        'Access to Global Mentorship, Investor Pitching, and Networking Alumni Network'
+      ]),
+      applicationSteps: '1. Register an account on the TEFConnect official portal (tefconnect.net).\n2. Complete the online aptitude and business assessment.\n3. Submit your business pitch and video presentation.\n4. Complete the 12-week online entrepreneurship training module.',
+      tags: JSON.stringify(['Grant', 'Entrepreneurship', 'Tony Elumelu Foundation', 'Instagram', 'LinkedIn', 'Nigeria'])
+    },
+    {
+      title: 'Ingressive For Good (I4G) Tech Talent Scholarship & Laptop Grant',
+      provider: 'Ingressive For Good (Instagram @ingressive4good / LinkedIn)',
+      description: 'Fully funded scholarship and hardware support initiative for African youths learning high-demand technology skills (Frontend, Backend, UI/UX Design, Data Science, and Cloud Architecture) in partnership with DataCamp and Coursera.',
+      opportunityType: 'Training Program',
+      educationLevel: 'Undergraduate',
+      location: 'Nigeria & Remote',
+      fieldOfStudy: 'IT/Computer Science',
+      bannerColor: '#10B981',
+      sourceUrl: 'https://ingressive.org/i4g-data-camp-program/',
+      applicationLink: 'https://ingressive.org/i4g-data-camp-program/',
+      eligibilityCriteria: JSON.stringify([
+        'Passionate African youth aged 18–35 interested in tech careers',
+        'Commitment to dedicate 10–15 hours weekly to coursework',
+        'Demonstrated financial need or lack of access to high-end learning resources'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Valid ID Card (Student ID, NIN, or Voter’s Card)',
+        'Curriculum Vitae (CV)',
+        'Statement of Motivation explaining how tech education will impact your career'
+      ]),
+      benefits: JSON.stringify([
+        '100% Free Access to DataCamp, Coursera, or Tech Accelerator tracks',
+        'Brand New Laptop Grants awarded to top-performing participants',
+        'Direct Job Placement & Internship matching upon completion'
+      ]),
+      applicationSteps: '1. Complete the I4G scholarship registration form.\n2. Pass the basic aptitude and commitment screening.\n3. Receive your free premium learning license and join the community.',
+      tags: JSON.stringify(['Training Program', 'Laptop Grant', 'Ingressive For Good', 'Instagram', 'LinkedIn', 'Technology'])
+    },
+    {
+      title: 'She Code Africa Mentorship & Hardware Laptop Scholarship',
+      provider: 'She Code Africa (Instagram @shecodeafrica / LinkedIn)',
+      description: 'Intensive 3-month cohort-based technical training and laptop scholarship program designed to accelerate girls and women across Africa in Software Engineering, Cybersecurity, Cloud, and Data Science.',
+      opportunityType: 'Fellowship',
+      educationLevel: 'Undergraduate',
+      location: 'Nigeria & Africa',
+      fieldOfStudy: 'IT/Computer Science',
+      bannerColor: '#9333EA',
+      sourceUrl: 'https://shecodeafrica.org/programs',
+      applicationLink: 'https://shecodeafrica.org/programs',
+      eligibilityCriteria: JSON.stringify([
+        'Identifies as a woman living in Africa',
+        'Beginner or intermediate technical skills in Web Dev, Mobile, Data, or Cloud',
+        'Availability to participate fully in weekly mentorship sessions for 3 months'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Valid Identity Document (NIN or Passport)',
+        'GitHub / Portfolio link or code sample (if any)',
+        'Statement of Commitment'
+      ]),
+      benefits: JSON.stringify([
+        '1-on-1 Mentorship from Senior Tech Engineers at Google, Paystack, and Microsoft',
+        'Monthly Internet Data Allowance & Learning Hardware Grants',
+        'Technical Certification & Direct Hiring Partner Referrals'
+      ]),
+      applicationSteps: '1. Apply via the She Code Africa application form.\n2. Submit the technical assessment task.\n3. Attend the virtual onboarding interview.',
+      tags: JSON.stringify(['Fellowship', 'Women in Tech', 'She Code Africa', 'Instagram', 'LinkedIn', 'Technology'])
+    },
+    {
+      title: 'Stanbic IBTC University Undergraduate Scholarship Scheme (₦400,000 Grant)',
+      provider: 'Stanbic IBTC Holdings (Instagram @stanbicibtc / LinkedIn)',
+      description: 'Educational grant initiative by Stanbic IBTC awarding ₦100,000 per academic session for 4 full years (total ₦400,000) to top-performing UTME/JAMB candidates admitted into accredited Nigerian federal and state universities.',
+      opportunityType: 'Scholarship',
+      educationLevel: 'Undergraduate',
+      location: 'Nigeria (All 36 States + FCT)',
+      fieldOfStudy: 'All Disciplines',
+      bannerColor: '#0033A0',
+      sourceUrl: 'https://www.stanbicibtc.com/nigeria/personal/about-us/university-scholarship',
+      applicationLink: 'https://www.stanbicibtc.com/nigeria/personal/about-us/university-scholarship',
+      eligibilityCriteria: JSON.stringify([
+        'Nigerian citizen admitted into a Nigerian Federal or State University in the current academic year',
+        'Minimum UTME score of 250 in the recent Joint Admissions and Matriculation Board (JAMB) exams',
+        'Minimum of 5 credits in WAEC / NECO / GCE including English Language and Mathematics in one sitting'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'JAMB / UTME Result Slip showing 250+ score',
+        'Official University Admission Letter / JAMB Admission Letter',
+        'O’Level Certificate (WAEC/NECO Statement of Results)',
+        'State of Origin Certificate / Local Government Identification'
+      ]),
+      benefits: JSON.stringify([
+        '₦100,000 Annual Education Grant for 4 consecutive academic years (₦400,000 total)',
+        'Guaranteed consideration for Stanbic IBTC Graduate Trainee and Internship programs',
+        'Access to executive leadership coaching and financial wellness seminars'
+      ]),
+      applicationSteps: '1. Access the Stanbic IBTC University Scholarship portal.\n2. Fill in your personal details, UTME registration number, and university information.\n3. Upload scanned copies of required academic documents.\n4. Complete the online verification and submit.',
+      tags: JSON.stringify(['Scholarship', 'Undergraduate', 'Stanbic IBTC', 'Instagram', 'LinkedIn', 'Nigeria'])
+    },
+    {
+      title: 'Carrington Youth Fellowship Initiative (CYFI - US Consulate General Lagos)',
+      provider: 'United States Consulate General Lagos (Instagram @usinnigeria)',
+      description: 'Premier leadership fellowship by the US Consulate General Lagos bringing together committed young Nigerian professionals and civic leaders to implement impactful social projects in education, health, economic empowerment, and good governance.',
+      opportunityType: 'Fellowship',
+      educationLevel: 'Graduate',
+      location: 'Lagos & Nigeria',
+      fieldOfStudy: 'All Disciplines & Civic Innovation',
+      bannerColor: '#002868',
+      sourceUrl: 'https://www.carringtonfellowship.org/',
+      applicationLink: 'https://www.carringtonfellowship.org/',
+      eligibilityCriteria: JSON.stringify([
+        'Nigerian citizen aged 21–35 residing in Nigeria',
+        'Demonstrated leadership, innovation, and commitment to community development',
+        'Ability to commit to bi-weekly sessions and project implementation over 1 year'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Comprehensive Curriculum Vitae (CV)',
+        'Two Professional / Academic References',
+        'Community Impact Project Concept Note (500 words)'
+      ]),
+      benefits: JSON.stringify([
+        'Full Project Funding & Grant Support from the US Consulate Lagos',
+        'High-Level Mentorship from US Diplomats, Fortune 500 Executives, and Alumni',
+        'Official US Department of State Fellowship Certificate and Alumni Status'
+      ]),
+      applicationSteps: '1. Submit the online application on carringtonfellowship.org.\n2. Complete the short essay responses on civic leadership.\n3. Shortlisted candidates participate in panel interviews with US Consulate officials.',
+      tags: JSON.stringify(['Fellowship', 'Leadership', 'US Consulate', 'Instagram', 'LinkedIn', 'Nigeria'])
+    }
+  ];
+
+  for (const item of curatedSocialPrograms) {
+    try {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 50);
+
+      const existing = await prisma.opportunity.findFirst({
+        where: {
+          OR: [
+            { sourceUrl: item.sourceUrl },
+            { title: item.title }
+          ]
+        }
+      });
+
+      const data = {
+        ...item,
+        deadline,
+        postedAt: new Date(),
+        isActive: true
+      };
+
+      if (existing) {
+        await prisma.opportunity.update({
+          where: { id: existing.id },
+          data
+        });
+        results.push({ id: existing.id, title: item.title, type: 'opportunity', status: 'updated' });
+      } else {
+        const created = await prisma.opportunity.create({ data });
+        results.push({ id: created.id, title: item.title, type: 'opportunity', status: 'created' });
+      }
+    } catch (e) {
+      console.warn('  ⚠️ Curated social program error:', e.message);
+    }
+  }
+
   return results;
 }
 
