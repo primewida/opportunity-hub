@@ -42,9 +42,12 @@ export default function LearningRoadmaps() {
 
   const filtered = useMemo(() => {
     let result = [...data];
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter((r) => r.title.toLowerCase().includes(q) || r.description.toLowerCase().includes(q));
+    const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
+    if (q) {
+      result = result.filter((r) => 
+        (typeof r.title === 'string' && r.title.toLowerCase().includes(q)) || 
+        (typeof r.description === 'string' && r.description.toLowerCase().includes(q))
+      );
     }
     if (category !== 'All') result = result.filter((r) => r.category === category);
     return result;

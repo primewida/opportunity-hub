@@ -29,9 +29,9 @@ export default function MentorDirectory() {
     });
   }, []);
 
-  const fields = ['All', ...new Set(mentorsList.map(m => m.field || m.expertise || 'General'))];
+  const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
   const filtered = mentorsList.filter(m => {
-    if (search && !m.name.toLowerCase().includes(search.toLowerCase()) && !(m.field || '').toLowerCase().includes(search.toLowerCase())) return false;
+    if (q && !(typeof m.name === 'string' && m.name.toLowerCase().includes(q)) && !(typeof m.field === 'string' && m.field.toLowerCase().includes(q))) return false;
     if (field !== 'All' && (m.field || m.expertise) !== field) return false;
     return true;
   });

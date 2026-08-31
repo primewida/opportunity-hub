@@ -51,13 +51,13 @@ export default function CourseRecommendations() {
     let list = [...data];
 
     /* search */
-    if (search.trim()) {
-      const q = search.toLowerCase();
+    const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
+    if (q) {
       list = list.filter(
         (c) =>
-          c.title.toLowerCase().includes(q) ||
-          (c.provider && c.provider.toLowerCase().includes(q)) ||
-          (c.skillCategory && c.skillCategory.toLowerCase().includes(q))
+          (typeof c.title === 'string' && c.title.toLowerCase().includes(q)) ||
+          (typeof c.provider === 'string' && c.provider.toLowerCase().includes(q)) ||
+          (typeof c.skillCategory === 'string' && c.skillCategory.toLowerCase().includes(q))
       );
     }
 

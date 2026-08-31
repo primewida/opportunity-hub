@@ -10,9 +10,20 @@ export default function SearchBar({
   className = '',
   ...props
 }) {
+  const displayValue = typeof value === 'string' ? value : (value?.target?.value ?? String(value ?? ''));
+
+  const handleChange = (e) => {
+    const val = e?.target ? e.target.value : String(e ?? '');
+    if (typeof onChange === 'function') {
+      onChange(val);
+    }
+  };
+
   const handleClear = () => {
     onClear?.();
-    onChange?.({ target: { value: '' } });
+    if (typeof onChange === 'function') {
+      onChange('');
+    }
   };
 
   return (
@@ -30,15 +41,16 @@ export default function SearchBar({
       <input
         type="text"
         className="input"
-        value={value}
-        onChange={onChange}
+        value={displayValue}
+        onChange={handleChange}
         onFocus={onFocus}
         placeholder={placeholder}
-        style={{ paddingLeft: '40px', paddingRight: value ? '40px' : '12px', width: '100%' }}
+        style={{ paddingLeft: '40px', paddingRight: displayValue ? '40px' : '12px', width: '100%' }}
         {...props}
       />
-      {value && (
+      {displayValue && (
         <button
+          type="button"
           onClick={handleClear}
           aria-label="Clear search"
           style={{

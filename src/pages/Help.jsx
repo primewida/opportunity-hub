@@ -33,7 +33,8 @@ export default function Help() {
     }).catch(() => setLoading(false));
   }, []);
 
-  const filtered = search ? allFaqs.filter(f => f.q.toLowerCase().includes(search.toLowerCase()) || f.a.toLowerCase().includes(search.toLowerCase())) : null;
+  const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
+  const filtered = q ? allFaqs.filter(f => (typeof f.q === 'string' && f.q.toLowerCase().includes(q)) || (typeof f.a === 'string' && f.a.toLowerCase().includes(q))) : null;
 
   if (loading) return <div className="help">Loading...</div>;
 

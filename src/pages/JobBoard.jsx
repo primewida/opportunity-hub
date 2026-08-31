@@ -126,17 +126,18 @@ export default function JobBoard() {
   };
   
   const filtered = useMemo(() => (data || []).filter(j => {
-    if (search) {
-      const q = search.toLowerCase();
-      const matchTitle = j.title?.toLowerCase().includes(q);
-      const matchCompany = j.company?.toLowerCase().includes(q);
-      const matchLoc = j.location?.toLowerCase().includes(q);
-      const matchReq = j.requirements?.some(r => r.toLowerCase().includes(q));
-      if (!matchTitle && !matchCompany && !matchLoc && !matchReq) return false;
+    const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
+    if (q) {
+      const matchTitle = typeof j.title === 'string' && j.title.toLowerCase().includes(q);
+      const matchCompany = typeof j.company === 'string' && j.company.toLowerCase().includes(q);
+      const matchLoc = typeof j.location === 'string' && j.location.toLowerCase().includes(q);
+      const matchReq = Array.isArray(j.requirements) && j.requirements.some(r => typeof r === 'string' && r.toLowerCase().includes(q));
+      const matchTags = Array.isArray(j.tags) && j.tags.some(t => typeof t === 'string' && t.toLowerCase().includes(q));
+      if (!matchTitle && !matchCompany && !matchLoc && !matchReq && !matchTags) return false;
     }
     if (typeFilter !== 'All') {
-      const jType = (j.type || '').toLowerCase();
-      const fType = typeFilter.toLowerCase();
+      const jType = String(j.type || '').toLowerCase();
+      const fType = String(typeFilter || '').toLowerCase();
       if (!jType.includes(fType) && !fType.includes(jType)) return false;
     }
     if (scopeFilter !== 'All') {

@@ -60,13 +60,13 @@ export default function BrowseOpportunities() {
 
   const filtered = useMemo(() => {
     let result = [...data];
-    if (search) {
-      const q = search.toLowerCase();
+    const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
+    if (q) {
       result = result.filter(o => 
-        (o.title && o.title.toLowerCase().includes(q)) || 
-        (o.organization && o.organization.toLowerCase().includes(q)) ||
-        (o.provider && o.provider.toLowerCase().includes(q)) ||
-        (o.description && o.description.toLowerCase().includes(q))
+        (typeof o.title === 'string' && o.title.toLowerCase().includes(q)) || 
+        (typeof o.organization === 'string' && o.organization.toLowerCase().includes(q)) ||
+        (typeof o.provider === 'string' && o.provider.toLowerCase().includes(q)) ||
+        (typeof o.description === 'string' && o.description.toLowerCase().includes(q))
       );
     }
     if (typeFilter !== 'All') {
