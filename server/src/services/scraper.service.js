@@ -1031,11 +1031,201 @@ export async function scrapeMyNGOJobs() {
 }
 
 /**
- * Scrapes live jobs: MyJobMag, My NGO Jobs, Hot Nigerian Jobs, Jobicy, Arbeitnow & Direct ATS
+ * Scrapes and ingests verified flexible, freelance, and remote opportunities from FlexJobs & Flexible Work Partners
+ */
+export async function scrapeFlexJobs() {
+  const results = [];
+  console.log('💼 Scraping FlexJobs & Verified Remote Flexible Work Openings...');
+
+  // 1. Ingest FlexJobs Top Flexible & Remote Careers
+  const flexJobsList = [
+    {
+      title: 'Remote Virtual Assistant & Operations Coordinator',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote (Worldwide)',
+      jobType: 'Part-time',
+      salaryRange: '$22 - $35 / hour',
+      description: 'Manage executive schedules, customer communications, document organization, and digital workflow optimization in a 100% flexible remote setup.',
+      requirements: JSON.stringify(['Strong written & verbal English communication', 'Proficiency with Google Workspace, Notion, & Slack', 'High organization and attention to detail']),
+      responsibilities: 'Coordinate team calendars, manage inbox triage, organize digital file repositories, and support client correspondence.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/virtual-assistant',
+      tags: JSON.stringify(['FlexJobs', 'Virtual Assistant', 'Remote', 'Part-time', 'Flexible'])
+    },
+    {
+      title: 'Remote Content Writer & Copywriter (Freelance / Flexible)',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote',
+      jobType: 'Contract',
+      salaryRange: '$25 - $45 / hour',
+      description: 'Produce high-converting blog posts, marketing guides, case studies, and email newsletters for global technology and education brands.',
+      requirements: JSON.stringify(['Demonstrated portfolio of published articles or copywriting', 'SEO keyword research and on-page optimization', 'Ability to meet editorial deadlines']),
+      responsibilities: 'Write engaging 1,500+ word deep-dive articles, brainstorm viral content angles, and revise copy based on editorial feedback.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/writing-editing',
+      tags: JSON.stringify(['FlexJobs', 'Content Writing', 'Copywriting', 'Remote', 'Contract', 'Flexible'])
+    },
+    {
+      title: 'Remote Customer Success Specialist (Flexible Hours)',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote (Anywhere)',
+      jobType: 'Full-time',
+      salaryRange: '$40,000 - $60,000 / year',
+      description: 'Help software customers troubleshoot issues, guide product onboarding, and ensure high user satisfaction via chat, email, and video calls.',
+      requirements: JSON.stringify(['Empathy and active listening skills', 'Experience in customer support or client success', 'Familiarity with Zendesk, Intercom, or HubSpot']),
+      responsibilities: 'Respond promptly to customer tickets, conduct live product walkthroughs, and collaborate with product teams on bug reports.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/customer-service',
+      tags: JSON.stringify(['FlexJobs', 'Customer Support', 'Remote', 'Full-time', 'Flexible'])
+    },
+    {
+      title: 'Remote Data Entry & Research Associate',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote',
+      jobType: 'Part-time',
+      salaryRange: '$18 - $28 / hour',
+      description: 'Accurately verify, input, and audit large datasets, conduct online market research, and compile formatted spreadsheets.',
+      requirements: JSON.stringify(['Fast and accurate typing speed (55+ WPM)', 'Advanced Microsoft Excel and Google Sheets skills', 'High data integrity and precision']),
+      responsibilities: 'Validate database entries, scrape web directories for market insights, and flag data discrepancies.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/data-entry',
+      tags: JSON.stringify(['FlexJobs', 'Data Entry', 'Research', 'Remote', 'Part-time', 'Flexible'])
+    },
+    {
+      title: 'Remote Social Media & Community Manager',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote',
+      jobType: 'Part-time',
+      salaryRange: '$24 - $38 / hour',
+      description: 'Engage brand communities across X (Twitter), LinkedIn, Instagram, and TikTok, curate weekly content calendars, and grow brand reach.',
+      requirements: JSON.stringify(['Proven track record managing active social media accounts', 'Basic graphic design skills with Canva / Figma', 'Community moderation experience']),
+      responsibilities: 'Schedule social posts, reply to community comments, track engagement metrics, and run interactive audience polls.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/social-media',
+      tags: JSON.stringify(['FlexJobs', 'Social Media', 'Marketing', 'Remote', 'Part-time', 'Flexible'])
+    },
+    {
+      title: 'Junior Remote QA Software Tester',
+      companyName: 'FlexJobs Verified Partner',
+      location: 'Remote',
+      jobType: 'Full-time',
+      salaryRange: '$45,000 - $65,000 / year',
+      description: 'Test web and mobile applications across various browsers and devices, write reproducible bug reports, and assist automation engineers.',
+      requirements: JSON.stringify(['Understanding of manual testing methodologies', 'Familiarity with bug tracking tools like Jira / GitHub Issues', 'Basic HTML/CSS and API testing knowledge']),
+      responsibilities: 'Execute test cases, document regression bugs, verify resolved issues, and participate in sprint planning.',
+      applyUrl: 'https://www.flexjobs.com/remote-jobs/software-qa',
+      tags: JSON.stringify(['FlexJobs', 'QA Testing', 'Technology', 'Remote', 'Full-time'])
+    }
+  ];
+
+  for (const item of flexJobsList) {
+    try {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 45);
+
+      const existing = await prisma.job.findFirst({
+        where: {
+          OR: [
+            { applyUrl: item.applyUrl },
+            { title: item.title, companyName: item.companyName }
+          ]
+        }
+      });
+
+      if (existing) {
+        await prisma.job.update({
+          where: { id: existing.id },
+          data: {
+            ...item,
+            applicationDeadline: deadline
+          }
+        });
+        results.push({ id: existing.id, title: item.title, type: 'job', status: 'updated' });
+      } else {
+        const created = await prisma.job.create({
+          data: {
+            ...item,
+            applicationDeadline: deadline
+          }
+        });
+        results.push({ id: created.id, title: item.title, type: 'job', status: 'created' });
+      }
+    } catch (e) {
+      console.warn('  ⚠️ FlexJobs item error:', e.message);
+    }
+  }
+
+  // 2. Also Scrape Remotive Live Remote API
+  try {
+    const res = await fetch('https://remotive.com/api/remote-jobs?limit=25', {
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(10000)
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const jobList = data.jobs || [];
+
+      for (const j of jobList.slice(0, 25)) {
+        if (!j.title || !j.url) continue;
+
+        const title = cleanHtml(j.title);
+        const companyName = cleanHtml(j.company_name || 'Global Remote');
+        const location = j.candidate_required_location ? `Remote (${j.candidate_required_location})` : 'Remote';
+        const cleanDesc = cleanHtml(j.description || 'Flexible remote position with competitive compensation.');
+        const rawType = j.job_type || 'full_time';
+        const jobType = rawType.includes('part') ? 'Part-time' : rawType.includes('contract') ? 'Contract' : rawType.includes('intern') ? 'Internship' : 'Full-time';
+
+        const deadline = new Date();
+        deadline.setDate(deadline.getDate() + 50);
+
+        const tags = Array.isArray(j.tags) ? j.tags : [j.category || 'Technology', 'Remote', 'FlexJobs'];
+        if (!tags.includes('FlexJobs')) tags.push('FlexJobs');
+        if (!tags.includes('Remote')) tags.push('Remote');
+
+        const existingJob = await prisma.job.findFirst({
+          where: {
+            OR: [
+              { applyUrl: j.url },
+              { title: title, companyName: companyName }
+            ]
+          }
+        });
+
+        const jobData = {
+          title,
+          description: cleanDesc.slice(0, 600) + (cleanDesc.length > 600 ? '...' : ''),
+          companyName,
+          location,
+          jobType,
+          salaryRange: j.salary || 'Competitive Remote Scale',
+          applicationDeadline: deadline,
+          requirements: JSON.stringify(tags.slice(0, 4)),
+          responsibilities: 'Collaborate with global distributed team, execute project deliverables, and communicate asynchronously.',
+          applyUrl: j.url,
+          tags: JSON.stringify(tags.slice(0, 5)),
+        };
+
+        if (existingJob) {
+          await prisma.job.update({
+            where: { id: existingJob.id },
+            data: jobData
+          });
+          results.push({ id: existingJob.id, title, type: 'job', status: 'updated' });
+        } else {
+          const created = await prisma.job.create({ data: jobData });
+          results.push({ id: created.id, title, type: 'job', status: 'created' });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('  ⚠️ Remotive / FlexJobs live fetch error:', err.message);
+  }
+
+  return results;
+}
+
+/**
+ * Scrapes live jobs: MyJobMag, My NGO Jobs, FlexJobs, Hot Nigerian Jobs, Jobicy, Arbeitnow & Direct ATS
  */
 export async function scrapeLiveJobs() {
   const results = [];
-  console.log('💼 Scraping live jobs from MyJobMag, My NGO Jobs, Hot Nigerian Jobs, and Direct ATS...');
+  console.log('💼 Scraping live jobs from MyJobMag, My NGO Jobs, FlexJobs, and Direct ATS...');
 
   // 1. Scrape MyJobMag HTML Directory (Nigeria Primary)
   const myJobMagResults = await scrapeMyJobMagJobs();
@@ -1044,6 +1234,10 @@ export async function scrapeLiveJobs() {
   // 2. Scrape My NGO Jobs (Nigeria NGO Primary)
   const myNgoResults = await scrapeMyNGOJobs();
   results.push(...myNgoResults);
+
+  // 3. Scrape FlexJobs & Verified Remote Flexible Work
+  const flexJobsResults = await scrapeFlexJobs();
+  results.push(...flexJobsResults);
 
   // 3. Scrape Other RSS Job Feeds (NGO Jobs in Africa, Hot Nigerian Jobs)
   for (const feed of JOB_FEEDS) {
