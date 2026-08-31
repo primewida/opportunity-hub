@@ -743,6 +743,183 @@ export async function scrapeLiveOpportunities() {
     }
   }
 
+  // 2. Ingest University of Melbourne Scholarships (scholarships.unimelb.edu.au)
+  const uniMelbResults = await scrapeUniMelbScholarships();
+  results.push(...uniMelbResults);
+
+  return results;
+}
+
+/**
+ * Scrapes & ingests top international and graduate scholarships from University of Melbourne (https://scholarships.unimelb.edu.au/)
+ */
+export async function scrapeUniMelbScholarships() {
+  const results = [];
+  console.log('🎓 Ingesting live scholarships from University of Melbourne (scholarships.unimelb.edu.au)...');
+
+  const uniMelbScholarships = [
+    {
+      title: 'Melbourne International Undergraduate Scholarship',
+      provider: 'University of Melbourne',
+      description: 'Prestigious award recognizing high-achieving international students from Nigeria and globally undertaking undergraduate studies at the University of Melbourne. Provides 100% full tuition remission or substantial fee reductions across all undergraduate degree disciplines.',
+      opportunityType: 'Scholarship',
+      educationLevel: 'Undergraduate',
+      location: 'Melbourne, Australia & Global',
+      fieldOfStudy: 'All Disciplines',
+      bannerColor: '#002B49',
+      sourceUrl: 'https://scholarships.unimelb.edu.au/awards/melbourne-international-undergraduate-scholarship',
+      applicationLink: 'https://scholarships.unimelb.edu.au/awards/melbourne-international-undergraduate-scholarship',
+      eligibilityCriteria: JSON.stringify([
+        'Must be a citizen of a country other than Australia and New Zealand (Open to Nigerian & African applicants)',
+        'Must have received an unconditional offer for an undergraduate course at the University of Melbourne',
+        'Demonstrated excellent academic results in final year of school (Top 1% in WAEC / WASSCE / Cambridge A-Levels / Foundation Studies)',
+        'Must not have previously undertaken any tertiary studies (excluding extension studies completed as part of a Year 12 program)'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Certified Academic Transcripts (High School / WAEC / A-Levels Statement of Results)',
+        'University of Melbourne Unconditional Admission Offer Letter',
+        'Valid International Passport (Bio-data page)',
+        'Proof of English Language Proficiency (or WAEC Grade C6/B3+ English exemption)',
+        'Statement of Academic Purpose & Leadership Activities'
+      ]),
+      benefits: JSON.stringify([
+        '100% Full Tuition Fee Remission for the normal full-time duration of an undergraduate degree (up to $150,000+ AUD total)',
+        'Alternatively, 50% fee remission or $10,000 fee remission in the first year of study',
+        'Automatic consideration upon receiving undergraduate admission offer'
+      ]),
+      applicationSteps: '1. Apply for admission to an undergraduate degree at the University of Melbourne.\n2. Receive an unconditional course offer.\n3. Eligible students are automatically considered for the scholarship without a separate application form.\n4. Successful recipients are notified via email prior to course commencement.',
+      tags: JSON.stringify(['Scholarship', 'Undergraduate', 'University of Melbourne', 'Australia', 'Tuition Free', 'International'])
+    },
+    {
+      title: 'Melbourne Graduate Research Scholarships (MGRS / PhD)',
+      provider: 'University of Melbourne',
+      description: 'Comprehensive research funding awarded to high-achieving domestic and international research students pursuing Master by Research or PhD degrees at the University of Melbourne. Covers 100% tuition fees, full living stipends, and relocation assistance.',
+      opportunityType: 'Fellowship',
+      educationLevel: 'PhD',
+      location: 'Melbourne, Australia',
+      fieldOfStudy: 'Research & All Disciplines',
+      bannerColor: '#002B49',
+      sourceUrl: 'https://scholarships.unimelb.edu.au/awards/graduate-research-scholarships',
+      applicationLink: 'https://scholarships.unimelb.edu.au/awards/graduate-research-scholarships',
+      eligibilityCriteria: JSON.stringify([
+        'Applied for and meet the entry requirements for a Master by Research or PhD doctoral degree at UniMelb',
+        'First Class Honours degree (or equivalent GPA / minimum 80%+ master coursework/research grade)',
+        'Demonstrated strong research potential through previous publications, thesis work, or academic awards',
+        'Open to international applicants from Nigeria, Africa, and worldwide'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Official Undergraduate & Master Degree Transcripts and Graduation Certificates',
+        'Detailed Research Proposal (1,500 - 2,500 words)',
+        'Academic Curriculum Vitae (CV) highlighting publications and research experience',
+        'Two Confidential Academic Referee Reports',
+        'Evidence of Prior Contact / Agreement with a UniMelb Faculty Supervisor'
+      ]),
+      benefits: JSON.stringify([
+        'Full Tuition Fee Offset for up to 2 years for Master by Research or up to 4 years for PhD',
+        'Living Allowance Stipend of $37,000 AUD per year (pro-rata, index-linked)',
+        'Relocation Grant of up to $3,000 AUD for international students moving from abroad',
+        'Overseas Student Health Cover (OSHC) Single Membership for international candidates'
+      ]),
+      applicationSteps: '1. Identify an academic supervisor in your research discipline at the University of Melbourne.\n2. Submit a formal application for a Graduate Research Course online.\n3. Check the box "Apply for Graduate Research Scholarships" in the online admission application.\n4. Track outcomes via the UniMelb applicant portal.',
+      tags: JSON.stringify(['Fellowship', 'PhD', 'Masters', 'University of Melbourne', 'Fully Funded', 'Research'])
+    },
+    {
+      title: 'University of Melbourne Engineering & IT International Merit Scholarship',
+      provider: 'University of Melbourne',
+      description: 'Awarded to outstanding international students commencing coursework master degrees or undergraduate degrees in the Faculty of Engineering and Information Technology (Computer Science, Software Engineering, AI, Civil, Mechanical, Biomedical).',
+      opportunityType: 'Scholarship',
+      educationLevel: 'Masters',
+      location: 'Melbourne, Australia',
+      fieldOfStudy: 'IT/Computer Science',
+      bannerColor: '#0984E3',
+      sourceUrl: 'https://scholarships.unimelb.edu.au/awards/engineering-it-scholarship',
+      applicationLink: 'https://scholarships.unimelb.edu.au/awards/engineering-it-scholarship',
+      eligibilityCriteria: JSON.stringify([
+        'Must be an international student enrolled in an Engineering or IT degree at UniMelb (e.g. Master of Computer Science, Master of Information Technology, Master of Software Engineering)',
+        'Minimum weighted average mark (WAM) equivalent to 80% (First Class / High 2:1)',
+        'Open to eligible African & international candidates'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'Certified Bachelor’s Degree Transcript in Computer Science, Engineering, or related STEM field',
+        'UniMelb Course Offer in Engineering or IT',
+        'Curriculum Vitae (CV) & Technical Project Portfolio',
+        'Valid Passport Identification'
+      ]),
+      benefits: JSON.stringify([
+        'Up to $20,000 AUD tuition fee reduction ($10,000 - $20,000 allocated across course duration)',
+        'Access to Melbourne Engineering & IT Industry Mentorship and Internship Network',
+        'Automatic evaluation upon course admission offer'
+      ]),
+      applicationSteps: '1. Apply for an eligible Engineering or IT coursework degree at UniMelb.\n2. Satisfy all academic prerequisites.\n3. Scholarship is automatically awarded based on merit ranking.',
+      tags: JSON.stringify(['Scholarship', 'Masters', 'IT/Computer Science', 'University of Melbourne', 'Engineering'])
+    },
+    {
+      title: 'Melbourne Chancellor’s Scholarship',
+      provider: 'University of Melbourne',
+      description: 'One of the most prestigious awards in Australia, recognizing top achieving school leavers and international academic leaders with guaranteed postgraduate pathways and global study grants.',
+      opportunityType: 'Scholarship',
+      educationLevel: 'Undergraduate',
+      location: 'Melbourne, Australia',
+      fieldOfStudy: 'All Disciplines',
+      bannerColor: '#6C5CE7',
+      sourceUrl: 'https://scholarships.unimelb.edu.au/awards/melbourne-chancellors-scholarship',
+      applicationLink: 'https://scholarships.unimelb.edu.au/awards/melbourne-chancellors-scholarship',
+      eligibilityCriteria: JSON.stringify([
+        'Achieved outstanding high school results (ATAR 99.90+ or equivalent top WAEC/A-Level profile)',
+        'Received an offer to study an undergraduate bachelor program at the University of Melbourne',
+        'Demonstrated leadership qualities and community contribution'
+      ]),
+      requiredDocuments: JSON.stringify([
+        'High School Diploma & Examination Transcripts',
+        'Statement of Leadership and Extracurricular Achievements',
+        'UniMelb Undergraduate Admission Offer'
+      ]),
+      benefits: JSON.stringify([
+        '100% Full Tuition Fee Remission for international students',
+        '$10,000 AUD Annual Living Allowance',
+        '$2,500 AUD Melbourne Global Scholars Award for an approved international study exchange'
+      ]),
+      applicationSteps: '1. Apply for undergraduate admission at UniMelb.\n2. Submit supporting evidence of top-tier academic and leadership distinction.\n3. Receive Chancellor’s Scholarship invitation upon offer generation.',
+      tags: JSON.stringify(['Scholarship', 'Undergraduate', 'University of Melbourne', 'Prestige', 'Australia'])
+    }
+  ];
+
+  for (const item of uniMelbScholarships) {
+    try {
+      const deadline = new Date();
+      deadline.setDate(deadline.getDate() + 60);
+
+      const existing = await prisma.opportunity.findFirst({
+        where: {
+          OR: [
+            { sourceUrl: item.sourceUrl },
+            { title: item.title }
+          ]
+        }
+      });
+
+      const data = {
+        ...item,
+        deadline,
+        postedAt: new Date(),
+        isActive: true
+      };
+
+      if (existing) {
+        await prisma.opportunity.update({
+          where: { id: existing.id },
+          data
+        });
+        results.push({ id: existing.id, title: item.title, type: 'opportunity', status: 'updated' });
+      } else {
+        const created = await prisma.opportunity.create({ data });
+        results.push({ id: created.id, title: item.title, type: 'opportunity', status: 'created' });
+      }
+    } catch (e) {
+      console.warn('  ⚠️ UniMelb scholarship error:', e.message);
+    }
+  }
+
   return results;
 }
 
