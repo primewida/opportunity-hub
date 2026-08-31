@@ -62,12 +62,28 @@ export default function BrowseOpportunities() {
     let result = [...data];
     const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
     if (q) {
-      result = result.filter(o => 
-        (typeof o.title === 'string' && o.title.toLowerCase().includes(q)) || 
-        (typeof o.organization === 'string' && o.organization.toLowerCase().includes(q)) ||
-        (typeof o.provider === 'string' && o.provider.toLowerCase().includes(q)) ||
-        (typeof o.description === 'string' && o.description.toLowerCase().includes(q))
-      );
+      const tokens = q.split(/\s+/).filter(Boolean);
+      result = result.filter(o => {
+        const reqText = Array.isArray(o.eligibilityCriteria) ? o.eligibilityCriteria.join(' ') : String(o.eligibilityCriteria || '');
+        const docsText = Array.isArray(o.requiredDocuments) ? o.requiredDocuments.join(' ') : String(o.requiredDocuments || '');
+        const benText = Array.isArray(o.benefits) ? o.benefits.join(' ') : String(o.benefits || '');
+        const tagsText = Array.isArray(o.tags) ? o.tags.join(' ') : String(o.tags || '');
+        const combinedText = `
+          ${o.title || ''} 
+          ${o.organization || ''} 
+          ${o.provider || ''} 
+          ${o.description || ''} 
+          ${o.location || ''} 
+          ${o.type || o.opportunityType || ''} 
+          ${o.educationLevel || ''} 
+          ${o.fieldOfStudy || ''} 
+          ${reqText} 
+          ${docsText} 
+          ${benText} 
+          ${tagsText}
+        `.toLowerCase();
+        return tokens.every(token => combinedText.includes(token));
+      });
     }
     if (typeFilter !== 'All') {
       result = result.filter(o => (o.type || o.opportunityType) === typeFilter);

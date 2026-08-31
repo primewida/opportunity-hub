@@ -128,12 +128,23 @@ export default function JobBoard() {
   const filtered = useMemo(() => (data || []).filter(j => {
     const q = (typeof search === 'string' ? search : (search?.target?.value ?? String(search ?? ''))).toLowerCase().trim();
     if (q) {
-      const matchTitle = typeof j.title === 'string' && j.title.toLowerCase().includes(q);
-      const matchCompany = typeof j.company === 'string' && j.company.toLowerCase().includes(q);
-      const matchLoc = typeof j.location === 'string' && j.location.toLowerCase().includes(q);
-      const matchReq = Array.isArray(j.requirements) && j.requirements.some(r => typeof r === 'string' && r.toLowerCase().includes(q));
-      const matchTags = Array.isArray(j.tags) && j.tags.some(t => typeof t === 'string' && t.toLowerCase().includes(q));
-      if (!matchTitle && !matchCompany && !matchLoc && !matchReq && !matchTags) return false;
+      const tokens = q.split(/\s+/).filter(Boolean);
+      const reqText = Array.isArray(j.requirements) ? j.requirements.join(' ') : String(j.requirements || '');
+      const tagsText = Array.isArray(j.tags) ? j.tags.join(' ') : String(j.tags || '');
+      const combinedText = `
+        ${j.title || ''} 
+        ${j.company || ''} 
+        ${j.location || ''} 
+        ${j.type || ''} 
+        ${j.description || ''} 
+        ${j.responsibilities || ''} 
+        ${j.salary || ''} 
+        ${reqText} 
+        ${tagsText}
+      `.toLowerCase();
+      
+      const allTokensMatch = tokens.every(token => combinedText.includes(token));
+      if (!allTokensMatch) return false;
     }
     if (typeFilter !== 'All') {
       const jType = String(j.type || '').toLowerCase();
@@ -174,7 +185,7 @@ export default function JobBoard() {
 
       <div style={{ display: 'flex', gap: 'var(--space-sm)', alignItems: 'center', marginBottom: 'var(--space-md)' }}>
         <div style={{ flex: 1 }}>
-          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search jobs, tech stacks, skills, companies..." />
+          <SearchBar value={search} onChange={setSearch} onClear={() => setSearch('')} placeholder="Search jobs, tech stacks, skills, companies, cities..." />
         </div>
         <button 
           className={`btn btn-icon btn-ghost ${scraping ? 'animate-spin' : ''}`}
@@ -201,81 +212,100 @@ export default function JobBoard() {
         {scraping && <span style={{ fontSize: 'var(--text-caption)', color: 'var(--color-primary)' }}>🔄 Syncing live Nigerian & remote jobs...</span>}
       </div>
 
-      <div className="jobs__list">
-        {filtered.map(job => (
-          <Card 
-            key={job.id} 
-            variant="interactive" 
-            style={{ marginBottom: 'var(--space-md)', cursor: 'pointer' }}
-            onClick={() => setSelectedJob(job)}
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '3rem 1.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', margin: 'var(--space-md) 0' }}>
+          <div style={{ fontSize: '36px', marginBottom: '12px' }}>🔍</div>
+          <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '8px' }}>
+            No jobs found matching your search
+          </h3>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', maxWidth: '420px', margin: '0 auto 16px' }}>
+            {search ? `We couldn't find any live vacancies matching "${search}". Try searching for other skills (e.g. "Developer", "Sales", "NGO", "Remote", "FlexJobs") or reset your location/type filters.` : 'No jobs found matching the selected filters.'}
+          </p>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={() => { setSearch(''); setTypeFilter('All'); setScopeFilter('All'); }}
           >
-            <div className="card-body jobs__card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
-                <div className="jobs__card-logo" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', flexShrink: 0 }}>
-                  {job.company?.charAt(0).toUpperCase() || 'J'}
-                </div>
-                <div className="jobs__card-info" style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                    <h3 className="jobs__card-title" style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
-                    {job.proximityTier === 1 && (
-                      <span className="badge badge-success" style={{ fontSize: '10px', padding: '2px 8px' }}>📍 In {userState}</span>
-                    )}
-                    {job.proximityTier === 2 && (
-                      <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 8px' }}>🇳🇬 Nigeria</span>
-                    )}
-                    {job.proximityTier === 3 && (
-                      <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌐 Remote</span>
-                    )}
-                    {job.proximityTier === 4 && (
-                      <span className="badge badge-secondary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌍 Global</span>
-                    )}
+            Reset All Filters
+          </Button>
+        </div>
+      ) : (
+        <div className="jobs__list">
+          {filtered.map(job => (
+            <Card 
+              key={job.id} 
+              variant="interactive" 
+              style={{ marginBottom: 'var(--space-md)', cursor: 'pointer' }}
+              onClick={() => setSelectedJob(job)}
+            >
+              <div className="card-body jobs__card" style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-sm)' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 'var(--space-md)' }}>
+                  <div className="jobs__card-logo" style={{ width: 48, height: 48, borderRadius: 'var(--radius-md)', background: 'var(--color-primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '18px', flexShrink: 0 }}>
+                    {job.company?.charAt(0).toUpperCase() || 'J'}
                   </div>
-                  <p className="jobs__card-company" style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: 'var(--text-subhead)' }}>{job.company}</p>
-                  <div className="jobs__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', fontSize: 'var(--text-caption)', color: 'var(--text-tertiary)' }}>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {job.location}</span>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {job.type}</span>
-                    {job.salary && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', fontWeight: 600 }}><DollarSign size={13} /> {job.salary}</span>}
+                  <div className="jobs__card-info" style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                      <h3 className="jobs__card-title" style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600 }}>{job.title}</h3>
+                      {job.proximityTier === 1 && (
+                        <span className="badge badge-success" style={{ fontSize: '10px', padding: '2px 8px' }}>📍 In {userState}</span>
+                      )}
+                      {job.proximityTier === 2 && (
+                        <span className="badge badge-neutral" style={{ fontSize: '10px', padding: '2px 8px' }}>🇳🇬 Nigeria</span>
+                      )}
+                      {job.proximityTier === 3 && (
+                        <span className="badge badge-primary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌐 Remote</span>
+                      )}
+                      {job.proximityTier === 4 && (
+                        <span className="badge badge-secondary" style={{ fontSize: '10px', padding: '2px 8px' }}>🌍 Global</span>
+                      )}
+                    </div>
+                    <p className="jobs__card-company" style={{ color: 'var(--text-secondary)', margin: '0 0 8px', fontSize: 'var(--text-subhead)' }}>{job.company}</p>
+                    <div className="jobs__card-meta" style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-sm)', fontSize: 'var(--text-caption)', color: 'var(--text-tertiary)' }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><MapPin size={13} /> {job.location}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}><Briefcase size={13} /> {job.type}</span>
+                      {job.salary && <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--color-success)', fontWeight: 600 }}><DollarSign size={13} /> {job.salary}</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
+                    <Button 
+                      variant="secondary" 
+                      size="sm" 
+                      onClick={(e) => { e.stopPropagation(); setSelectedJob(job); }}
+                    >
+                      Requirements
+                    </Button>
+                    <a
+                      href={job.applyUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-primary btn-sm"
+                      style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Apply <ExternalLink size={14} />
+                    </a>
                   </div>
                 </div>
-                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
-                  <Button 
-                    variant="secondary" 
-                    size="sm" 
-                    onClick={(e) => { e.stopPropagation(); setSelectedJob(job); }}
-                  >
-                    Requirements
-                  </Button>
-                  <a
-                    href={job.applyUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary btn-sm"
-                    style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    Apply <ExternalLink size={14} />
-                  </a>
-                </div>
-              </div>
 
-              {/* Requirements & Skills Chips preview */}
-              {job.requirements && job.requirements.length > 0 && (
-                <div style={{ borderTop: '0.5px solid var(--separator)', paddingTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Requirements:</span>
-                  {job.requirements.slice(0, 3).map((req, i) => (
-                    <span key={i} className="chip chip-sm" style={{ fontSize: '11px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
-                      ✓ {req.length > 35 ? req.slice(0, 35) + '...' : req}
-                    </span>
-                  ))}
-                  {job.requirements.length > 3 && (
-                    <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 600 }}>+{job.requirements.length - 3} more</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
+                {/* Requirements & Skills Chips preview */}
+                {job.requirements && job.requirements.length > 0 && (
+                  <div style={{ borderTop: '0.5px solid var(--separator)', paddingTop: '8px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-tertiary)', textTransform: 'uppercase' }}>Requirements:</span>
+                    {job.requirements.slice(0, 3).map((req, i) => (
+                      <span key={i} className="chip chip-sm" style={{ fontSize: '11px', background: 'var(--bg-secondary)', color: 'var(--text-secondary)' }}>
+                        ✓ {req.length > 35 ? req.slice(0, 35) + '...' : req}
+                      </span>
+                    ))}
+                    {job.requirements.length > 3 && (
+                      <span style={{ fontSize: '11px', color: 'var(--color-primary)', fontWeight: 600 }}>+{job.requirements.length - 3} more</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Interactive Job Detail & Requirements Modal */}
       {selectedJob && (
